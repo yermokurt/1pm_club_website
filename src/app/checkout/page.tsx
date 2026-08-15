@@ -27,7 +27,16 @@ export default async function CheckoutPage() {
         Choose a valid slot, scan the café QR and submit for approval.
       </p>
       <div className="mt-9">
-        <CheckoutForm settings={settings} initialName={name} initialEmail={email} />
+        {settings.accepting_orders ? (
+          <CheckoutForm settings={settings} initialName={name} initialEmail={email} />
+        ) : (
+          <div className="card p-8">
+            <p className="display text-4xl">Pre-orders are closed.</p>
+            <p className="mt-3 text-[var(--color-muted)]">
+              The café is not accepting new orders right now. Please check back later.
+            </p>
+          </div>
+        )}
       </div>
     </main>
   );

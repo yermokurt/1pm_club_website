@@ -82,15 +82,12 @@ export function ProfilePanel({
       <section className="card p-6">
         <p className="eyebrow">Preferences</p>
         <button className="btn secondary mt-4" onClick={toggle}>
-          Use {theme === "blue" ? "purple" : "blue"} theme
+          Switch theme (current: {theme === "mono" ? "black and white" : theme})
         </button>
       </section>
       <section className="card p-6">
         <p className="eyebrow">Account actions</p>
-        <button
-          onClick={logout}
-          className="mt-7 text-xs font-bold uppercase text-[var(--color-danger)]"
-        >
+        <button onClick={logout} className="btn danger mt-4">
           Sign out
         </button>
       </section>

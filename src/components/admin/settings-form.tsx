@@ -4,9 +4,10 @@ import { createClient } from "@/lib/supabase/browser";
 import type { BusinessSettings } from "@/types/domain";
 export function SettingsForm({ settings }: { settings: BusinessSettings }) {
   const [message, setMessage] = useState<string | null>(null);
+  const [acceptingOrders, setAcceptingOrders] = useState(settings.accepting_orders);
   const save = async (formData: FormData) => {
     const values = {
-      accepting_orders: formData.get("accepting_orders") === "on",
+      accepting_orders: acceptingOrders,
       morning_cutoff: String(formData.get("morning_cutoff")),
       lunch_cutoff: String(formData.get("lunch_cutoff")),
       slot_capacity: Number(formData.get("slot_capacity")),
@@ -17,7 +18,12 @@ export function SettingsForm({ settings }: { settings: BusinessSettings }) {
   return (
     <form className="card p-6 max-w-xl" action={save}>
       <label className="flex gap-3 items-center font-bold">
-        <input type="checkbox" name="accepting_orders" defaultChecked={settings.accepting_orders} />{" "}
+        <input
+          type="checkbox"
+          name="accepting_orders"
+          checked={acceptingOrders}
+          onChange={(event) => setAcceptingOrders(event.target.checked)}
+        />{" "}
         Accepting orders
       </label>
       <div className="grid sm:grid-cols-2 gap-4 mt-6">

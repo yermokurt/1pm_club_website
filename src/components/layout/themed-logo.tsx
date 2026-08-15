@@ -14,7 +14,12 @@ export function ThemedLogo({
   priority?: boolean;
 }) {
   const { theme } = useTheme();
-  const src = theme === "purple" ? "/images/switchlogo.png" : "/images/logo.png";
+  const src =
+    theme === "mono"
+      ? "/images/whitelogo.png"
+      : theme === "purple"
+        ? "/images/switchlogo.png"
+        : "/images/logo.png";
   return (
     <Image
       className={className}

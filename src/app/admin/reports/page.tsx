@@ -38,9 +38,9 @@ export default async function ReportsPage({
     .select(
       "order_number,fulfillment_date,customer_name_snapshot,customer_email_snapshot,order_method,department_name_snapshot,time_slot,payment_method,payment_status,order_status,total_centavos,order_items(quantity)",
     )
-    .gte("fulfillment_date", from)
-    .lte("fulfillment_date", to)
-    .order("fulfillment_date", { ascending: false })
+    .gte("created_at", `${from}T00:00:00+08:00`)
+    .lt("created_at", `${to}T23:59:59.999+08:00`)
+    .order("created_at", { ascending: false })
     .limit(500);
   if (status) query = query.eq("order_status", status);
   if (payment) query = query.eq("payment_method", payment);

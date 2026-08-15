@@ -6,7 +6,8 @@ export default async function AdminPage() {
   const { data } = await supabase
     .from("orders")
     .select("order_status,payment_status")
-    .eq("fulfillment_date", today);
+    .gte("created_at", `${today}T00:00:00+08:00`)
+    .lt("created_at", `${today}T23:59:59.999+08:00`);
   const orders = (data ?? []) as Array<{ order_status: string; payment_status: string }>;
   const statuses = [
     "pending",

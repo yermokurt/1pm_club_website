@@ -1,6 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Plus, X, Minus } from "lucide-react";
+import Image from "next/image";
 import type { Addon, Product } from "@/types/domain";
 import { formatPeso } from "@/lib/currency";
 import { useCartStore } from "@/stores/cart-store";
@@ -59,8 +60,21 @@ export function MenuBrowser({ products, addons }: { products: Product[]; addons:
       <div className="grid gap-3 mt-8 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((product) => (
           <article key={product.id} className="card p-5 flex flex-col min-h-44">
+            {product.image_url && (
+              <Image
+                className="mb-4 aspect-square w-full object-cover border border-[var(--color-border)]"
+                src={product.image_url}
+                alt=""
+                width={400}
+                height={400}
+                unoptimized
+              />
+            )}
             <p className="eyebrow">{product.category?.name}</p>
             <h2 className="display text-3xl mt-2 leading-none">{product.name}</h2>
+            {product.description && (
+              <p className="mt-2 text-sm text-[var(--color-muted)]">{product.description}</p>
+            )}
             <div className="mt-auto pt-5 flex justify-between items-end">
               <strong>{formatPeso(product.price_centavos)}</strong>
               {product.is_available ? (
@@ -102,6 +116,13 @@ function ProductDialog({
   const [chosen, setChosen] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
   const add = useCartStore((state) => state.add);
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, []);
   const active = addons.filter((addon) => addon.is_available);
   const addOnTotal = active
     .filter((addon) => chosen.includes(addon.id))
@@ -134,6 +155,19 @@ function ProductDialog({
           </button>
         </div>
         <p className="mt-2 font-bold">{formatPeso(product.price_centavos)}</p>
+        {product.image_url && (
+          <Image
+            className="mx-auto mt-5 aspect-square w-full max-w-xs object-cover border border-[var(--color-border)]"
+            src={product.image_url}
+            alt=""
+            width={400}
+            height={400}
+            unoptimized
+          />
+        )}
+        {product.description && (
+          <p className="mt-4 text-sm text-[var(--color-muted)]">{product.description}</p>
+        )}
         <fieldset className="mt-7">
           <legend className="eyebrow mb-3">Boost your drink</legend>
           {active.map((addon) => (

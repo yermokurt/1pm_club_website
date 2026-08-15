@@ -26,7 +26,7 @@ export default async function ProfilePage() {
     completed: statuses.filter((status) => status === "completed").length,
   };
   return (
-    <main className="shell">
+    <main className="shell max-w-3xl">
       <p className="eyebrow">Your account</p>
       <h1 className="display text-6xl mt-2">Profile</h1>
       <div className="mt-8">

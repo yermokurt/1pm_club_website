@@ -5,7 +5,7 @@ export default async function AdminMenuPage() {
   const [{ data }, { data: categories }] = await Promise.all([
     supabase
       .from("products")
-      .select("id,name,is_available,price_centavos,sort_order")
+      .select("id,name,description,image_url,is_available,price_centavos,sort_order")
       .order("sort_order"),
     supabase.from("categories").select("id,name").order("sort_order"),
   ]);
@@ -25,6 +25,8 @@ export default async function AdminMenuPage() {
             (data ?? []) as unknown as Array<{
               id: string;
               name: string;
+              description: string | null;
+              image_url: string | null;
               is_available: boolean;
               price_centavos: number;
               sort_order: number;

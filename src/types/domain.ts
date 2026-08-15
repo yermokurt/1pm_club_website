@@ -28,6 +28,8 @@ export interface Product {
   sort_order: number;
   category_id: string;
   category?: Category | null;
+  description?: string | null;
+  image_url?: string | null;
 }
 export interface Addon {
   id: string;

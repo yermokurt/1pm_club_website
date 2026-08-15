@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Coffee, Home, Package, ShoppingBag, UserRound, Palette } from "lucide-react";
+import { Coffee, Home, Package, ShoppingBag, UserRound, Palette, Settings } from "lucide-react";
 import { useTheme } from "./theme-provider";
 import { CartFloat } from "@/components/cart/cart-float";
 import { ThemedLogo } from "./themed-logo";
@@ -57,7 +57,7 @@ export function Navigation() {
               )}
             </Link>
             <button
-              aria-label={`Switch to ${theme === "blue" ? "purple" : "blue"} theme`}
+              aria-label={`Switch to ${theme === "blue" ? "purple" : theme === "purple" ? "black and white" : "blue"} theme`}
               onClick={toggle}
               className="p-2 text-primary"
             >
@@ -74,6 +74,12 @@ export function Navigation() {
             <span>{label}</span>
           </Link>
         ))}
+        {isAdmin && (
+          <Link href="/admin">
+            <Settings size={18} />
+            <span>Admin</span>
+          </Link>
+        )}
       </nav>
     </>
   );

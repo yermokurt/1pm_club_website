@@ -25,6 +25,25 @@
   --color-surface: rgba(255, 255, 255, 0.72);
   --color-field: #fff;
 }
+[data-theme="mono"] {
+  --color-primary: #ffffff;
+  --color-secondary: #a3a3a3;
+  --color-background: #000000;
+  --color-foreground: #ffffff;
+  --color-muted: #d4d4d4;
+  --color-border: #ffffff;
+  --color-surface: #111111;
+  --color-field: #111111;
+  --color-success: #86efac;
+  --color-warning: #fde68a;
+  --color-danger: #fca5a5;
+}
+[data-theme="mono"] .btn {
+  color: #000;
+}
+[data-theme="mono"] .btn.secondary {
+  color: #fff;
+}
 * {
   box-sizing: border-box;
 }
