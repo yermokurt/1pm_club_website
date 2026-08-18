@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/browser";
 export function OrderRealtime({ customerId }: { customerId: string }) {
   const router = useRouter();
   useEffect(() => {
-    const channel = createClient()
+    const client = createClient();
+    const channel = client
       .channel(`customer-orders-${customerId}`)
       .on(
         "postgres_changes",
@@ -18,8 +19,12 @@ export function OrderRealtime({ customerId }: { customerId: string }) {
         () => router.refresh(),
       )
       .subscribe();
+    // Realtime provides instant updates when enabled in Supabase. Polling is a
+    // dependable fallback for local testing or projects without replication enabled.
+    const interval = window.setInterval(() => router.refresh(), 15_000);
     return () => {
-      void createClient().removeChannel(channel);
+      window.clearInterval(interval);
+      void client.removeChannel(channel);
     };
   }, [customerId, router]);
   return null;

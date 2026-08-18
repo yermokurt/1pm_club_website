@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/currency";
 import type { OrderDetail } from "@/types/domain";
 import { GuestOrderActions } from "@/components/orders/guest-order-actions";
+import { OrderProgress } from "@/components/orders/order-progress";
+import { OrderRealtime } from "@/components/orders/order-realtime";
 export default async function OrderPage({
   params,
   searchParams,
@@ -25,6 +27,7 @@ export default async function OrderPage({
       .from("orders")
       .select("*,order_items(*,order_item_addons(*))")
       .eq("order_number", orderNumber)
+      .eq("customer_id", user.id)
       .maybeSingle();
     data = response.data;
   } else if (token) {
@@ -38,6 +41,7 @@ export default async function OrderPage({
   const order = data as OrderDetail;
   return (
     <main className="shell max-w-3xl">
+      {user && <OrderRealtime customerId={user.id} />}
       <p className="eyebrow">Order #{order.order_number}</p>
       <h1 className="display text-6xl mt-2">On its way.</h1>
       {!user && token && (
@@ -51,9 +55,11 @@ export default async function OrderPage({
       <div className="card mt-8 p-6 sm:p-8">
         <div className="flex flex-wrap justify-between gap-4">
           <div>
-            <OrderStatusBadge status={order.order_status} />
-            <p className="mt-2">
-              <PaymentBadge status={order.payment_status} />
+            <p className="text-sm">
+              <strong>Order status:</strong> <OrderStatusBadge status={order.order_status} />
+            </p>
+            <p className="mt-2 text-sm">
+              <strong>Payment status:</strong> <PaymentBadge status={order.payment_status} />
             </p>
           </div>
           <strong className="text-2xl">{formatPeso(order.total_centavos)}</strong>
@@ -75,6 +81,7 @@ export default async function OrderPage({
             </dd>
           </div>
         </dl>
+        <OrderProgress status={order.order_status} method={order.order_method} />
         {order.order_items && (
           <div className="mt-8 pt-6 border-t border-[var(--color-border)]">
             <p className="eyebrow">Your drinks</p>

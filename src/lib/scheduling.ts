@@ -20,6 +20,24 @@ export const manilaDate = (now = new Date()): string => {
   const p = manilaParts(now);
   return `${p.year}-${p.month}-${p.day}`;
 };
+
+const timeToMinutes = (value: string, assumeAfternoon = false): number | null => {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp][Mm]))?$/);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const period = match[3]?.toLowerCase();
+  if (minute > 59 || hour > 23) return null;
+  if (period) {
+    if (hour < 1 || hour > 12) return null;
+    hour = (hour % 12) + (period === "pm" ? 12 : 0);
+  } else if (assumeAfternoon && hour > 0 && hour < 7) {
+    // Older settings can contain "01:30" for the 1:30 PM lunch cutoff.
+    hour += 12;
+  }
+  return hour * 60 + minute;
+};
+
 export const slotIsOpen = (
   slot: TimeSlot,
   settings: BusinessSettings,
@@ -27,7 +45,9 @@ export const slotIsOpen = (
 ): boolean => {
   const p = manilaParts(now);
   const cutoff = slot === "morning" ? settings.morning_cutoff : settings.lunch_cutoff;
-  return `${p.hour}:${p.minute}` < cutoff;
+  const cutoffMinutes = timeToMinutes(cutoff, slot === "lunch");
+  if (cutoffMinutes === null) return false;
+  return Number(p.hour) * 60 + Number(p.minute) < cutoffMinutes;
 };
 export const dateIsBookable = (
   date: string,

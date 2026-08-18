@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validation/order";
 import { sendFulfillmentEmail } from "@/lib/resend/fulfillment-email";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { consumeRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 
 export type OrderActionResult =
   { ok: true; orderNumber: number; guestToken?: string } | { ok: false; message: string };
@@ -14,6 +16,15 @@ async function submitOrderInternal(input: CheckoutInput): Promise<OrderActionRes
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (
+    !(await consumeRateLimit({
+      scope: "checkout",
+      subject: user?.id ?? parsed.data.customerEmail,
+      limit: 5,
+      windowSeconds: 600,
+    }))
+  )
+    return { ok: false, message: rateLimitMessage };
   const { data, error } = await supabase.rpc("create_order_with_payment", {
     p_customer_name: parsed.data.customerName,
     p_customer_email: parsed.data.customerEmail,
@@ -67,17 +78,38 @@ async function submitOrderInternal(input: CheckoutInput): Promise<OrderActionRes
           ? "That fulfilment date or slot is no longer available."
           : "We couldn’t submit this order. Please try again.",
     };
-  const result = data as unknown as {
+  const rawResult = (Array.isArray(data) ? data[0] : data) as unknown as {
     order_number: number;
     guest_access_token: string | null;
   } | null;
-  if (!result) return { ok: false, message: "We couldn’t create an order." };
+  const orderNumber = Number(rawResult?.order_number);
+  if (!Number.isSafeInteger(orderNumber) || orderNumber <= 0)
+    return {
+      ok: false,
+      message:
+        "Your order was created, but its confirmation number could not be read. Check My Orders.",
+    };
+  try {
+    const admin = createAdminClient();
+    const { data: administrators } = await admin.from("profiles").select("id").eq("role", "admin");
+    const cups = parsed.data.items.reduce((total, item) => total + item.quantity, 0);
+    if (administrators?.length)
+      await admin.from("notifications").insert(
+        administrators.map(({ id }) => ({
+          profile_id: id,
+          title: `New order #${orderNumber}`,
+          body: `${parsed.data.customerName} placed a ${cups}-cup ${parsed.data.orderMethod} order.`,
+        })),
+      );
+  } catch {
+    // The order is valid even if staff notifications cannot be written.
+  }
   revalidatePath("/orders");
   revalidatePath("/admin/orders");
   return {
     ok: true,
-    orderNumber: result.order_number,
-    ...(user ? {} : { guestToken: result.guest_access_token ?? undefined }),
+    orderNumber,
+    ...(user ? {} : { guestToken: rawResult?.guest_access_token ?? undefined }),
   };
 }
 
@@ -96,6 +128,18 @@ export async function submitOrder(input: CheckoutInput): Promise<OrderActionResu
 
 export async function cancelOrder(orderId: string): Promise<{ ok: boolean; message: string }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (
+    !(await consumeRateLimit({
+      scope: "cancel-order",
+      subject: user?.id ?? orderId,
+      limit: 10,
+      windowSeconds: 600,
+    }))
+  )
+    return { ok: false, message: rateLimitMessage };
   const { error } = await supabase.rpc("cancel_own_pending_order", { p_order_id: orderId });
   if (error) return { ok: false, message: "Only your pending orders can be cancelled." };
   revalidatePath("/orders");
@@ -107,6 +151,18 @@ export async function updateOrderByAdmin(
   paymentStatus?: string,
 ): Promise<{ ok: boolean; message: string }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (
+    !(await consumeRateLimit({
+      scope: "admin-order-update",
+      subject: user?.id ?? "unknown",
+      limit: 30,
+      windowSeconds: 300,
+    }))
+  )
+    return { ok: false, message: rateLimitMessage };
   const { error } = await supabase.rpc("admin_update_order", {
     p_order_id: orderId,
     p_status: status,
@@ -114,9 +170,36 @@ export async function updateOrderByAdmin(
     p_rejection_message: null,
   });
   if (error) return { ok: false, message: "The update could not be applied." };
-  if (status === "ready_for_pickup" || status === "to_be_delivered")
-    await sendFulfillmentEmail(orderId);
+  const statusLabel = status.replaceAll("_", " ");
+  try {
+    const admin = createAdminClient();
+    const { data: order } = await admin
+      .from("orders")
+      .select("customer_id,order_number")
+      .eq("id", orderId)
+      .maybeSingle();
+    const owner = order as { customer_id: string | null; order_number: number } | null;
+    if (owner?.customer_id)
+      await admin.from("notifications").insert({
+        profile_id: owner.customer_id,
+        title: `Order #${owner.order_number} updated`,
+        body: `Order status: ${statusLabel}.`,
+      });
+  } catch {
+    // A notification failure must never prevent the status change.
+  }
+  let email: { sent: boolean; message: string } | null = null;
+  if (status === "ready_for_pickup" || status === "to_be_delivered") {
+    try {
+      email = await sendFulfillmentEmail(orderId);
+    } catch {
+      email = {
+        sent: false,
+        message: "Email was not sent: server email configuration is incomplete.",
+      };
+    }
+  }
   revalidatePath("/admin");
   revalidatePath("/admin/orders");
-  return { ok: true, message: "Order updated." };
+  return { ok: true, message: email ? `Order updated. ${email.message}` : "Order updated." };
 }

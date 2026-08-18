@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/browser";
+import { registerAccount, signInWithPassword } from "@/app/actions/auth";
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -11,17 +11,12 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const name = String(formData.get("name") ?? "").trim();
-    const supabase = createClient();
     const response =
       mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { name }, emailRedirectTo: `${window.location.origin}/auth/callback` },
-          });
+        ? await signInWithPassword(email, password)
+        : await registerAccount(email, password, name);
     setLoading(false);
-    if (response.error) return setMessage(response.error.message);
+    if (!response.ok) return setMessage(response.message ?? "Could not complete that request.");
     if (mode === "register") setMessage("Check your email to confirm your account.");
     else window.location.assign("/");
   };

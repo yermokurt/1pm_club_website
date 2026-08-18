@@ -1,4 +1,5 @@
 import { AdminOrderQueue } from "@/components/admin/admin-order-queue";
+import { AdminOrderRealtime } from "@/components/admin/admin-order-realtime";
 import { createClient } from "@/lib/supabase/server";
 import type { OrderSummary } from "@/types/domain";
 export default async function AdminOrdersPage() {
@@ -12,6 +13,7 @@ export default async function AdminOrdersPage() {
     .limit(100);
   return (
     <section className="pt-8">
+      <AdminOrderRealtime />
       <p className="eyebrow">Live queue</p>
       <h2 className="display text-5xl mt-2">Orders</h2>
       <div className="mt-7">

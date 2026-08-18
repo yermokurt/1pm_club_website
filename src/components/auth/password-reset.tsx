@@ -1,17 +1,14 @@
 "use client";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/browser";
+import { requestPasswordReset } from "@/app/actions/auth";
 export function PasswordReset() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const submit = async (formData: FormData) => {
     setLoading(true);
-    const { error } = await createClient().auth.resetPasswordForEmail(
-      String(formData.get("email") ?? ""),
-      { redirectTo: `${window.location.origin}/auth/callback?next=/profile` },
-    );
+    const result = await requestPasswordReset(String(formData.get("email") ?? ""));
     setLoading(false);
-    setMessage(error ? error.message : "Check your email for a password reset link.");
+    setMessage(result.message ?? "Check your email for a password reset link.");
   };
   return (
     <form action={submit} className="card p-7 max-w-md mx-auto">

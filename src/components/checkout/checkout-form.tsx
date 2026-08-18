@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import type { BusinessSettings, SlotCapacity } from "@/types/domain";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validation/order";
-import { availableDates } from "@/lib/scheduling";
+import { availableDates, manilaDate, slotIsOpen } from "@/lib/scheduling";
 import { cartCupCount, cartTotal, useCartStore } from "@/stores/cart-store";
 import { formatPeso } from "@/lib/currency";
 import { submitOrder } from "@/app/actions/orders";
@@ -24,7 +24,8 @@ export function CheckoutForm({
   const router = useRouter();
   const lines = useCartStore((state) => state.lines);
   const clear = useCartStore((state) => state.clear);
-  const dates = useMemo(() => availableDates(settings), [settings]);
+  const [now, setNow] = useState(() => new Date());
+  const dates = useMemo(() => availableDates(settings, now), [settings, now]);
   const [capacities, setCapacities] = useState<SlotCapacity[]>([]);
   const [online, setOnline] = useState(true);
   const [pending, startTransition] = useTransition();
@@ -45,6 +46,12 @@ export function CheckoutForm({
   const paymentMethod = form.watch("paymentMethod");
   const date = form.watch("fulfillmentDate");
   const slot = form.watch("timeSlot");
+  const isSlotStillOpen = (value: "morning" | "lunch") =>
+    date !== manilaDate(now) || slotIsOpen(value, settings, now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => {
     form.setValue(
       "items",
@@ -59,6 +66,11 @@ export function CheckoutForm({
   useEffect(() => {
     if (method === "pickup") form.setValue("departmentName", undefined);
   }, [method, form]);
+  useEffect(() => {
+    if (!date || isSlotStillOpen(slot)) return;
+    const alternative = slot === "morning" ? "lunch" : "morning";
+    if (isSlotStillOpen(alternative)) form.setValue("timeSlot", alternative);
+  }, [date, now, slot, form]);
   const refreshCapacity = useCallback(async () => {
     if (!date) return setCapacities([]);
     try {
@@ -111,6 +123,8 @@ export function CheckoutForm({
   const submit = (values: CheckoutInput) => {
     if (!lines.length) return setMessage("Your cart is empty.");
     if (!online) return setMessage("You’re offline. Reconnect before submitting your pre-order.");
+    if (values.fulfillmentDate === manilaDate() && !slotIsOpen(values.timeSlot, settings))
+      return setMessage("That ordering cutoff has passed. Please choose another available time.");
     const requested = cartCupCount(lines);
     const cap = capacities.find((item) => item.time_slot === values.timeSlot);
     if (cap && cap.capacity - cap.reserved_cups < requested)
@@ -314,7 +328,8 @@ export function CheckoutForm({
               const cap = capacities.find((item) => item.time_slot === value);
               const remaining = cap ? cap.capacity - cap.reserved_cups : null;
               const disabled =
-                remaining !== null && (remaining <= 0 || remaining < cartCupCount(lines));
+                !isSlotStillOpen(value) ||
+                (remaining !== null && (remaining <= 0 || remaining < cartCupCount(lines)));
               const isSelected = slot === value;
               const window = value === "morning" ? "7:00 AM – 10:00 AM" : "12:00 PM – 1:30 PM";
               return (
@@ -331,13 +346,11 @@ export function CheckoutForm({
                   />
                   <strong className="block capitalize">{value}</strong>
                   <span className="block text-xs mt-1 text-[var(--color-muted)]">{window}</span>
-                  <span className="text-sm text-[var(--color-muted)]">
-                    {remaining === null
-                      ? "Checking availability…"
-                      : remaining <= 0
-                        ? "FULL"
-                        : `${cap?.reserved_cups} / ${cap?.capacity} cups · ${remaining} remaining`}
-                  </span>
+                  {!isSlotStillOpen(value) && (
+                    <span className="mt-2 block text-sm text-[var(--color-muted)]">
+                      Ordering cutoff has passed
+                    </span>
+                  )}
                 </label>
               );
             })}

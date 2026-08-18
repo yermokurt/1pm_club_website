@@ -31,9 +31,13 @@ export function OrderList({ orders }: { orders: OrderSummary[] }) {
                 {order.fulfillment_date} · {order.time_slot}
               </span>
             </p>
-            <div className="mt-2 flex gap-3">
-              <OrderStatusBadge status={order.order_status} />
-              <PaymentBadge status={order.payment_status} />
+            <div className="mt-2 space-y-1">
+              <p className="text-sm">
+                <strong>Order status:</strong> <OrderStatusBadge status={order.order_status} />
+              </p>
+              <p className="text-sm">
+                <strong>Payment status:</strong> <PaymentBadge status={order.payment_status} />
+              </p>
             </div>
           </div>
           <div className="flex w-full sm:w-auto flex-wrap gap-3 items-center sm:justify-end">
