@@ -50,11 +50,11 @@ export function Navigation() {
           </Link>
           <nav className="nav-links" aria-label="Primary navigation">
             {links.map(({ href, label }) => (
-              <Link key={href} href={href}>
-                {label}
-              </Link>
+              <span className="contents" key={href}>
+                {label === "Profile" && isAdmin && <Link href="/admin">Admin</Link>}
+                <Link href={href}>{label}</Link>
+              </span>
             ))}
-            {isAdmin && <Link href="/admin">Admin</Link>}
             {profileId && <NotificationBell profileId={profileId} />}
             <Link
               href="/cart"
@@ -81,17 +81,19 @@ export function Navigation() {
       <CartFloat />
       <nav className="bottom-nav" aria-label="Mobile navigation">
         {links.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} className="relative">
-            <Icon size={18} />
-            <span>{label}</span>
-          </Link>
+          <span className="contents" key={href}>
+            {label === "Profile" && isAdmin && (
+              <Link href="/admin">
+                <Settings size={18} />
+                <span>Admin</span>
+              </Link>
+            )}
+            <Link href={href} className="relative">
+              <Icon size={18} />
+              <span>{label}</span>
+            </Link>
+          </span>
         ))}
-        {isAdmin && (
-          <Link href="/admin">
-            <Settings size={18} />
-            <span>Admin</span>
-          </Link>
-        )}
       </nav>
     </>
   );

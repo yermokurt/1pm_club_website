@@ -35,7 +35,31 @@ export default async function OrderPage({
       p_order_number: orderNumber,
       p_token: token,
     });
-    data = response.data?.[0] ?? null;
+    const guestOrder = response.data?.[0] ?? null;
+    if (guestOrder) {
+      const itemsResponse = await supabase.rpc("get_guest_order_items", {
+        p_order_number: orderNumber,
+        p_token: token,
+      });
+      const guestItems = (itemsResponse.data ?? []) as Array<{
+        id: string;
+        product_name_snapshot: string;
+        unit_price_snapshot_centavos: number;
+        quantity: number;
+        subtotal_centavos: number;
+        addons: Array<{
+          addon_name_snapshot: string;
+          addon_price_snapshot_centavos: number;
+        }>;
+      }>;
+      data = {
+        ...guestOrder,
+        order_items: guestItems.map(({ addons, ...item }) => ({
+          ...item,
+          order_item_addons: addons,
+        })),
+      };
+    }
   }
   if (!data) notFound();
   const order = data as OrderDetail;
@@ -64,7 +88,7 @@ export default async function OrderPage({
           </div>
           <strong className="text-2xl">{formatPeso(order.total_centavos)}</strong>
         </div>
-        <dl className="grid sm:grid-cols-3 gap-5 mt-8 pt-6 border-t border-[var(--color-border)] text-sm">
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-5 mt-8 pt-6 border-t border-[var(--color-border)] text-sm">
           <div>
             <dt className="eyebrow">Fulfilment</dt>
             <dd className="mt-2 font-bold">{order.fulfillment_date}</dd>
@@ -75,10 +99,11 @@ export default async function OrderPage({
           </div>
           <div>
             <dt className="eyebrow">Method</dt>
-            <dd className="mt-2 font-bold capitalize">
-              {order.order_method}
-              {order.department_name_snapshot ? ` · ${order.department_name_snapshot}` : ""}
-            </dd>
+            <dd className="mt-2 font-bold capitalize">{order.order_method}</dd>
+          </div>
+          <div>
+            <dt className="eyebrow">Department</dt>
+            <dd className="mt-2 font-bold">{order.department_name_snapshot || "—"}</dd>
           </div>
         </dl>
         <OrderProgress status={order.order_status} method={order.order_method} />

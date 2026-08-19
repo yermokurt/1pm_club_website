@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateOrderByAdmin } from "@/app/actions/orders";
+import { deleteOrderByAdmin, updateOrderByAdmin } from "@/app/actions/orders";
 import { formatPeso } from "@/lib/currency";
 import type { OrderSummary } from "@/types/domain";
 import { OrderStatusBadge, PaymentBadge } from "@/components/orders/order-status";
@@ -26,15 +26,17 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminOrder | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminOrder | null>(null);
+  const [typedOrderNumber, setTypedOrderNumber] = useState("");
   const router = useRouter();
   useEffect(() => {
-    if (!selected) return;
+    if (!selected && !deleteTarget) return;
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = original;
     };
-  }, [selected]);
+  }, [deleteTarget, selected]);
   const filtered = orders.filter((order) => filter === "all" || order.order_status === filter);
   const update = (id: string, status: string, payment?: string) =>
     start(() => {
@@ -43,6 +45,19 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
         if (result.ok) router.refresh();
       });
     });
+  const deleteOrder = () => {
+    if (!deleteTarget) return;
+    start(() => {
+      void deleteOrderByAdmin(deleteTarget.id, typedOrderNumber).then((result) => {
+        setMessage(result.message);
+        if (result.ok) {
+          setDeleteTarget(null);
+          setTypedOrderNumber("");
+          router.refresh();
+        }
+      });
+    });
+  };
   const nextStatus = (order: OrderSummary) =>
     order.order_status === "preparing"
       ? order.order_method === "delivery"
@@ -109,6 +124,16 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
               <button className="btn secondary !min-h-9 !px-3" onClick={() => setSelected(order)}>
                 View details
               </button>
+              <button
+                className="btn danger !min-h-9 !px-3"
+                disabled={pending}
+                onClick={() => {
+                  setDeleteTarget(order);
+                  setTypedOrderNumber("");
+                }}
+              >
+                Delete
+              </button>
               {order.order_status === "pending" && (
                 <>
                   <button
@@ -136,15 +161,16 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
                   {nextStatus(order)!.replaceAll("_", " ")}
                 </button>
               )}
-              {order.payment_status === "unpaid" && (
-                <button
-                  disabled={pending || order.order_status === "cancelled"}
-                  className="btn secondary !min-h-9 !px-3"
-                  onClick={() => update(order.id, order.order_status, "paid")}
-                >
-                  Mark paid
-                </button>
-              )}
+              {order.payment_status === "unpaid" &&
+                !["rejected", "cancelled"].includes(order.order_status) && (
+                  <button
+                    disabled={pending}
+                    className="btn secondary !min-h-9 !px-3"
+                    onClick={() => update(order.id, order.order_status, "paid")}
+                  >
+                    Mark paid
+                  </button>
+                )}
             </div>
           </article>
         ))}
@@ -155,10 +181,7 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
           role="dialog"
           aria-modal="true"
         >
-          <div
-            className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-6"
-            style={{ backgroundColor: "var(--color-field)", opacity: 1 }}
-          >
+          <div className="max-h-[85vh] w-full max-w-xl overflow-y-auto border border-[var(--color-border)] bg-[var(--color-field)] p-6 shadow-[6px_6px_0_var(--color-border)]">
             <div className="flex justify-between gap-4">
               <div>
                 <p className="eyebrow">Order details</p>
@@ -168,7 +191,7 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
                 Close
               </button>
             </div>
-            <div className="mt-5 space-y-2 text-sm">
+            <div className="mt-6 grid gap-4 border-y border-[var(--color-border)] py-5 text-sm sm:grid-cols-2">
               <p>
                 <strong>Customer:</strong> {selected.customer_name_snapshot}
               </p>
@@ -176,37 +199,100 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
                 <strong>Email:</strong> {selected.customer_email_snapshot || "—"}
               </p>
               <p>
-                <strong>Fulfilment:</strong> {selected.fulfillment_date} · {selected.time_slot}
+                <strong>Fulfilment:</strong> {selected.fulfillment_date}
+              </p>
+              <p>
+                <strong>Slot:</strong> {selected.time_slot}
               </p>
               <p>
                 <strong>Method:</strong> {selected.order_method}
-                {selected.department_name_snapshot ? ` · ${selected.department_name_snapshot}` : ""}
+              </p>
+              <p>
+                <strong>Department:</strong> {selected.department_name_snapshot || "—"}
               </p>
               {selected.customer_note && (
-                <p>
+                <p className="sm:col-span-2">
                   <strong>Note:</strong> {selected.customer_note}
                 </p>
               )}
             </div>
-            <div className="mt-5 border-t border-[var(--color-border)] pt-4">
+            <div className="mt-5">
+              <p className="eyebrow mb-2">Order items</p>
               {selected.order_items?.map((item, index) => (
-                <div className="py-2" key={`${item.product_name_snapshot}-${index}`}>
-                  <strong>
-                    {item.quantity}× {item.product_name_snapshot}
+                <div
+                  className="flex justify-between gap-4 border-t border-[var(--color-border)] py-3"
+                  key={`${item.product_name_snapshot}-${index}`}
+                >
+                  <div>
+                    <strong>
+                      {item.quantity}× {item.product_name_snapshot}
+                    </strong>
+                    {item.order_item_addons?.length ? (
+                      <p className="text-sm text-[var(--color-muted)]">
+                        +{" "}
+                        {item.order_item_addons
+                          .map((addon) => addon.addon_name_snapshot)
+                          .join(", ")}
+                      </p>
+                    ) : null}
+                  </div>
+                  <strong className="whitespace-nowrap">
+                    {formatPeso(item.subtotal_centavos)}
                   </strong>
-                  {item.order_item_addons?.length ? (
-                    <p className="text-sm text-[var(--color-muted)]">
-                      +{" "}
-                      {item.order_item_addons.map((addon) => addon.addon_name_snapshot).join(", ")}
-                    </p>
-                  ) : null}
-                  <span>{formatPeso(item.subtotal_centavos)}</span>
                 </div>
               ))}
             </div>
             <p className="mt-5 border-t border-[var(--color-border)] pt-4 text-right text-xl font-bold">
               {formatPeso(selected.total_centavos)}
             </p>
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-order-title"
+        >
+          <div className="w-full max-w-md border border-[var(--color-border)] bg-[var(--color-field)] p-6 shadow-[6px_6px_0_var(--color-border)]">
+            <p className="eyebrow text-[var(--color-danger)]">Permanent action</p>
+            <h3 id="delete-order-title" className="display mt-2 text-3xl">
+              Delete order #{deleteTarget.order_number}?
+            </h3>
+            <p className="mt-4 text-sm text-[var(--color-muted)]">
+              This permanently removes the order, its drink items, add-ons, and email logs. It
+              cannot be undone.
+            </p>
+            <label className="mt-5 block">
+              <span className="form-label">Type {deleteTarget.order_number} to confirm</span>
+              <input
+                className="field"
+                inputMode="numeric"
+                value={typedOrderNumber}
+                onChange={(event) => setTypedOrderNumber(event.target.value)}
+                autoFocus
+              />
+            </label>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                className="btn secondary !min-h-9 !px-3"
+                disabled={pending}
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setTypedOrderNumber("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn danger !min-h-9 !px-3"
+                disabled={pending || typedOrderNumber.trim() !== String(deleteTarget.order_number)}
+                onClick={deleteOrder}
+              >
+                Permanently delete
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -36,7 +36,7 @@ export default async function ReportsPage({
   let query = supabase
     .from("orders")
     .select(
-      "order_number,fulfillment_date,customer_name_snapshot,customer_email_snapshot,order_method,department_name_snapshot,time_slot,payment_method,payment_status,order_status,total_centavos,order_items(quantity)",
+      "order_number,fulfillment_date,customer_name_snapshot,customer_email_snapshot,order_method,department_name_snapshot,time_slot,payment_method,payment_status,order_status,total_centavos,order_items(product_name_snapshot,quantity,subtotal_centavos,order_item_addons(addon_name_snapshot))",
     )
     .gte("created_at", `${from}T00:00:00+08:00`)
     .lt("created_at", `${to}T23:59:59.999+08:00`)

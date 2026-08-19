@@ -213,3 +213,67 @@ export async function updateOrderByAdmin(
       : `Order updated. ${notificationMessage}`,
   };
 }
+
+export async function deleteOrderByAdmin(
+  orderId: string,
+  typedOrderNumber: string,
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Only an administrator can delete orders." };
+  if (
+    !(await consumeRateLimit({
+      scope: "admin-order-delete",
+      subject: user.id,
+      limit: 10,
+      windowSeconds: 600,
+    }))
+  )
+    return { ok: false, message: rateLimitMessage };
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if ((profile as { role?: string } | null)?.role !== "admin")
+    return { ok: false, message: "Only an administrator can delete orders." };
+
+  const { data: order } = await admin
+    .from("orders")
+    .select("id,order_number")
+    .eq("id", orderId)
+    .maybeSingle();
+  const target = order as { id: string; order_number: number } | null;
+  if (!target) return { ok: false, message: "That order no longer exists." };
+  if (typedOrderNumber.trim() !== String(target.order_number))
+    return { ok: false, message: "Enter the exact order number to confirm deletion." };
+
+  const { data: items, error: itemsReadError } = await admin
+    .from("order_items")
+    .select("id")
+    .eq("order_id", target.id);
+  if (itemsReadError) return { ok: false, message: "The order could not be deleted." };
+  const itemIds = (items ?? []).map((item) => item.id as string);
+  if (itemIds.length) {
+    const { error } = await admin.from("order_item_addons").delete().in("order_item_id", itemIds);
+    if (error) return { ok: false, message: "The order could not be deleted." };
+  }
+  const { error: emailError } = await admin.from("email_logs").delete().eq("order_id", target.id);
+  if (emailError) return { ok: false, message: "The order could not be deleted." };
+  const { error: itemError } = await admin.from("order_items").delete().eq("order_id", target.id);
+  if (itemError) return { ok: false, message: "The order could not be deleted." };
+  const { error: orderError } = await admin.from("orders").delete().eq("id", target.id);
+  if (orderError) return { ok: false, message: "The order could not be deleted." };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/analytics");
+  revalidatePath("/admin/reports");
+  revalidatePath("/checkout");
+  return { ok: true, message: `Order #${target.order_number} was permanently deleted.` };
+}

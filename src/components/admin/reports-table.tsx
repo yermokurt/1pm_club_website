@@ -1,5 +1,6 @@
 "use client";
 import { formatPeso } from "@/lib/currency";
+import * as XLSX from "xlsx-js-style";
 
 export type ReportOrder = {
   order_number: number;
@@ -13,28 +14,34 @@ export type ReportOrder = {
   payment_status: string;
   order_status: string;
   total_centavos: number;
-  order_items: Array<{ quantity: number }>;
+  order_items: Array<{
+    product_name_snapshot: string;
+    quantity: number;
+    subtotal_centavos: number;
+    order_item_addons?: Array<{ addon_name_snapshot: string }>;
+  }>;
 };
 
 export function ReportsTable({ orders }: { orders: ReportOrder[] }) {
-  const exportCsv = () => {
-    const fields = [
-      "Order Number",
-      "Date",
-      "Customer",
-      "Email",
-      "Fulfilment Method",
-      "Department",
-      "Slot",
-      "Payment Method",
-      "Payment Status",
-      "Order Status",
-      "Cup Quantity",
-      "Total",
-    ];
-    const csv = [
-      fields,
-      ...orders.map((order) => [
+  const fields = [
+    "Order Number",
+    "Date",
+    "Customer",
+    "Email",
+    "Fulfilment Method",
+    "Department",
+    "Slot",
+    "Payment Method",
+    "Payment Status",
+    "Order Status",
+    "Drink",
+    "Add-ons",
+    "Cup Total",
+    "Order Total",
+  ];
+  const inventoryRows = orders.flatMap((order) =>
+    order.order_items.flatMap((item) =>
+      Array.from({ length: item.quantity }, () => [
         order.order_number,
         order.fulfillment_date,
         order.customer_name_snapshot,
@@ -45,18 +52,66 @@ export function ReportsTable({ orders }: { orders: ReportOrder[] }) {
         order.payment_method ?? "",
         order.payment_status,
         order.order_status,
-        order.order_items.reduce((total, item) => total + item.quantity, 0),
-        (order.total_centavos / 100).toFixed(2),
+        item.product_name_snapshot,
+        (item.order_item_addons ?? []).map((addon) => addon.addon_name_snapshot).join(", "),
+        item.subtotal_centavos / item.quantity / 100,
+        order.total_centavos / 100,
       ]),
+    ),
+  );
+  const exportCsv = () => {
+    const csv = [
+      fields,
+      ...inventoryRows.map((row) =>
+        row.map((value, index) =>
+          index === 12 || index === 13 ? Number(value).toFixed(2) : value,
+        ),
+      ),
     ]
       .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
       .join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const url = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
     link.download = "1pm-club-report.csv";
     link.click();
     URL.revokeObjectURL(url);
+  };
+  const exportXlsx = () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([fields, ...inventoryRows]);
+    const lastColumn = XLSX.utils.encode_col(fields.length - 1);
+    worksheet["!autofilter"] = { ref: `A1:${lastColumn}${inventoryRows.length + 1}` };
+    worksheet["!cols"] = fields.map((field, columnIndex) => {
+      const longestValue = Math.max(
+        field.length,
+        ...inventoryRows.map((row) => String(row[columnIndex] ?? "").length),
+      );
+      return { wch: Math.min(Math.max(longestValue + 2, 12), 42) };
+    });
+    const styledWorksheet = worksheet as typeof worksheet & {
+      "!views"?: Array<Record<string, unknown>>;
+    };
+    styledWorksheet["!views"] = [
+      { state: "frozen", ySplit: 1, topLeftCell: "A2", activePane: "bottomLeft" },
+    ];
+    fields.forEach((_, index) => {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: index })];
+      if (cell)
+        cell.s = {
+          fill: { patternType: "solid", fgColor: { rgb: "0224CC" } },
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+    });
+    inventoryRows.forEach((_, rowIndex) => {
+      [12, 13].forEach((columnIndex) => {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex })];
+        if (cell) cell.z = "₱#,##0.00";
+      });
+    });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory by cup");
+    XLSX.writeFile(workbook, "1pm-club-inventory.xlsx", { compression: true });
   };
   const exportPdf = () => {
     const rows = orders
@@ -82,6 +137,9 @@ export function ReportsTable({ orders }: { orders: ReportOrder[] }) {
     <>
       <button className="btn secondary mb-4" onClick={exportCsv}>
         Export CSV
+      </button>
+      <button className="btn secondary mb-4 ml-3" onClick={exportXlsx}>
+        Export to XLSX
       </button>
       <button className="btn secondary mb-4 ml-3" onClick={exportPdf}>
         Export PDF
