@@ -36,7 +36,7 @@ export default async function AnalyticsPage({
   let query = supabase
     .from("orders")
     .select(
-      "order_status,payment_status,payment_method,order_method,total_centavos,order_items(product_name_snapshot,quantity,subtotal_centavos)",
+      "created_at,order_status,payment_status,payment_method,order_method,total_centavos,order_items(product_name_snapshot,quantity,subtotal_centavos)",
     )
     .gte("created_at", `${from}T00:00:00+08:00`)
     .lt("created_at", `${to}T23:59:59.999+08:00`);
@@ -45,6 +45,7 @@ export default async function AnalyticsPage({
   if (fulfilment) query = query.eq("order_method", fulfilment);
   const { data } = await query;
   const orders = (data ?? []) as Array<{
+    created_at: string;
     order_status: string;
     payment_status: string;
     total_centavos: number;
@@ -86,6 +87,21 @@ export default async function AnalyticsPage({
       ),
     ],
   ];
+  const perDay = new Map<string, number>();
+  const cursor = new Date(`${from}T12:00:00Z`);
+  const lastDay = new Date(`${to}T12:00:00Z`);
+  while (cursor <= lastDay) {
+    perDay.set(cursor.toISOString().slice(0, 10), 0);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  orders.forEach((order) => {
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(
+      new Date(order.created_at),
+    );
+    if (perDay.has(day)) perDay.set(day, (perDay.get(day) ?? 0) + 1);
+  });
+  const dailyOrders = [...perDay.entries()];
+  const peakOrders = Math.max(1, ...dailyOrders.map(([, count]) => count));
   return (
     <section className="pt-8">
       <p className="eyebrow">Orders placed analytics</p>
@@ -136,28 +152,56 @@ export default async function AnalyticsPage({
           </article>
         ))}
       </div>
-      <div className="card p-6 mt-6 max-w-2xl">
-        <p className="eyebrow">Top paid drinks by quantity</p>
-        {[...drinks.entries()]
-          .sort((a, b) => b[1].units - a[1].units)
-          .slice(0, 5)
-          .map(([name, value]) => (
-            <div
-              className="flex justify-between py-3 border-b border-[var(--color-border)]"
-              key={name}
-            >
-              <span>
-                {name}
-                <small className="block text-[var(--color-muted)]">{value.units} sold</small>
-              </span>
-              <strong>{formatPeso(value.revenue)}</strong>
-            </div>
-          ))}
-        {!drinks.size && (
-          <p className="mt-4 text-[var(--color-muted)]">
-            No paid order data matches these filters.
+      <div className="grid gap-6 mt-6 lg:grid-cols-2">
+        <div className="card p-6">
+          <p className="eyebrow">Top paid drinks by quantity</p>
+          {[...drinks.entries()]
+            .sort((a, b) => b[1].units - a[1].units)
+            .slice(0, 5)
+            .map(([name, value]) => (
+              <div
+                className="flex justify-between py-3 border-b border-[var(--color-border)]"
+                key={name}
+              >
+                <span>
+                  {name}
+                  <small className="block text-[var(--color-muted)]">{value.units} sold</small>
+                </span>
+                <strong>{formatPeso(value.revenue)}</strong>
+              </div>
+            ))}
+          {!drinks.size && (
+            <p className="mt-4 text-[var(--color-muted)]">
+              No paid order data matches these filters.
+            </p>
+          )}
+        </div>
+        <div className="card p-6">
+          <p className="eyebrow">Total orders per day</p>
+          <div
+            className="mt-6 flex h-56 items-end gap-1 border-b border-[var(--color-border)]"
+            role="img"
+            aria-label="Bar chart showing total orders for each day in the selected range"
+          >
+            {dailyOrders.map(([day, count]) => (
+              <div className="group flex h-full min-w-0 flex-1 flex-col justify-end" key={day}>
+                <div
+                  className="min-h-1 bg-primary transition-[height]"
+                  style={{ height: `${(count / peakOrders) * 100}%` }}
+                  title={`${day}: ${count} order${count === 1 ? "" : "s"}`}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex justify-between gap-3 text-xs text-[var(--color-muted)]">
+            <span>{from}</span>
+            <span>Peak: {peakOrders} orders</span>
+            <span>{to}</span>
+          </div>
+          <p className="mt-4 text-sm text-[var(--color-muted)]">
+            Hover a bar to see that day&apos;s total. This chart uses the same filters above.
           </p>
-        )}
+        </div>
       </div>
     </section>
   );

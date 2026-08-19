@@ -15,7 +15,7 @@ import { CartFloat } from "@/components/cart/cart-float";
 import { ThemedLogo } from "./themed-logo";
 import { cartCupCount, useCartStore } from "@/stores/cart-store";
 import { createClient } from "@/lib/supabase/browser";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const links = [
   { href: "/", label: "Home", icon: Home },
@@ -107,18 +107,18 @@ type Notification = {
 function NotificationBell({ profileId }: { profileId: string }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const refreshNotifications = useCallback(async () => {
+    const { data } = await createClient()
+      .from("notifications")
+      .select("id,title,body,read_at")
+      .eq("profile_id", profileId)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    setNotifications((data ?? []) as Notification[]);
+  }, [profileId]);
   useEffect(() => {
     const client = createClient();
-    const load = async () => {
-      const { data } = await client
-        .from("notifications")
-        .select("id,title,body,read_at")
-        .eq("profile_id", profileId)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      setNotifications((data ?? []) as Notification[]);
-    };
-    void load();
+    void refreshNotifications();
     const channel = client
       .channel(`nav-notifications-${profileId}`)
       .on(
@@ -134,7 +134,7 @@ function NotificationBell({ profileId }: { profileId: string }) {
       )
       .subscribe();
     return () => void client.removeChannel(channel);
-  }, [profileId]);
+  }, [profileId, refreshNotifications]);
   const unread = notifications.filter((notification) => !notification.read_at).length;
   const markAllRead = async () => {
     const unreadIds = notifications
@@ -156,7 +156,10 @@ function NotificationBell({ profileId }: { profileId: string }) {
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
         aria-expanded={open}
         className="relative p-2 text-primary"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => !value);
+          void refreshNotifications();
+        }}
       >
         <Bell size={19} />
         {unread > 0 && (

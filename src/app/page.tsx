@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Coffee, Sparkles } from "lucide-react";
-import { getMenu, getSettings } from "@/lib/data";
+import { getMenu, getMostOrderedProducts, getSettings } from "@/lib/data";
 import { formatPeso } from "@/lib/currency";
 export default async function HomePage() {
   const [products, settings] = await Promise.all([getMenu(), getSettings()]);
+  const favourites = await getMostOrderedProducts(products);
   return (
     <main className="shell">
       <section className="grid lg:grid-cols-[1.15fr_.85fr] gap-8 items-center pt-4 pb-10 lg:pt-8 lg:pb-20 border-b border-[var(--color-border)]">
@@ -43,20 +44,17 @@ export default async function HomePage() {
           </Link>
         </div>
         <div className="grid gap-3 mt-7 sm:grid-cols-3">
-          {products
-            .filter((item) => item.is_available)
-            .slice(0, 3)
-            .map((product) => (
-              <Link
-                key={product.id}
-                href="/menu"
-                className="card p-5 hover:bg-[var(--color-secondary)]"
-              >
-                <p className="eyebrow">{product.category?.name}</p>
-                <h3 className="display text-3xl mt-2">{product.name}</h3>
-                <p className="mt-6 font-bold">{formatPeso(product.price_centavos)}</p>
-              </Link>
-            ))}
+          {favourites.map((product) => (
+            <Link
+              key={product.id}
+              href="/menu"
+              className="card p-5 hover:bg-[var(--color-secondary)]"
+            >
+              <p className="eyebrow">{product.category?.name}</p>
+              <h3 className="product-name text-2xl mt-2">{product.name}</h3>
+              <p className="mt-6 font-bold">{formatPeso(product.price_centavos)}</p>
+            </Link>
+          ))}
         </div>
       </section>
     </main>

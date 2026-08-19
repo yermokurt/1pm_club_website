@@ -171,6 +171,7 @@ export async function updateOrderByAdmin(
   });
   if (error) return { ok: false, message: "The update could not be applied." };
   const statusLabel = status.replaceAll("_", " ");
+  let notificationMessage = "Customer notification could not be created.";
   try {
     const admin = createAdminClient();
     const { data: order } = await admin
@@ -179,12 +180,16 @@ export async function updateOrderByAdmin(
       .eq("id", orderId)
       .maybeSingle();
     const owner = order as { customer_id: string | null; order_number: number } | null;
-    if (owner?.customer_id)
-      await admin.from("notifications").insert({
+    if (owner?.customer_id) {
+      const { error: notificationError } = await admin.from("notifications").insert({
         profile_id: owner.customer_id,
         title: `Order #${owner.order_number} updated`,
         body: `Order status: ${statusLabel}.`,
       });
+      notificationMessage = notificationError
+        ? "Customer notification could not be created."
+        : "Customer notification created.";
+    }
   } catch {
     // A notification failure must never prevent the status change.
   }
@@ -201,5 +206,10 @@ export async function updateOrderByAdmin(
   }
   revalidatePath("/admin");
   revalidatePath("/admin/orders");
-  return { ok: true, message: email ? `Order updated. ${email.message}` : "Order updated." };
+  return {
+    ok: true,
+    message: email
+      ? `Order updated. ${notificationMessage} ${email.message}`
+      : `Order updated. ${notificationMessage}`,
+  };
 }

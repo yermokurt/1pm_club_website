@@ -26,7 +26,7 @@ export function CartPage() {
           <article key={line.lineId} className="card p-5 flex gap-4">
             <div className="flex-1">
               <p className="eyebrow">{line.product.category?.name}</p>
-              <h2 className="display text-3xl mt-1">{line.product.name}</h2>
+              <h2 className="product-name text-2xl mt-1">{line.product.name}</h2>
               {line.addons.length > 0 && (
                 <p className="text-sm mt-2 text-[var(--color-muted)]">
                   + {line.addons.map((addon) => addon.name).join(", ")}

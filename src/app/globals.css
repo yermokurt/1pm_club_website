@@ -15,6 +15,7 @@
   --color-surface: rgba(255, 255, 255, 0.72);
   --color-field: #fff;
 }
+
 [data-theme="purple"] {
   --color-primary: #4a10bd;
   --color-secondary: #d3abe0;
@@ -25,6 +26,7 @@
   --color-surface: rgba(255, 255, 255, 0.72);
   --color-field: #fff;
 }
+
 [data-theme="mono"] {
   --color-primary: #ffffff;
   --color-secondary: #a3a3a3;
@@ -38,37 +40,46 @@
   --color-warning: #fde68a;
   --color-danger: #fca5a5;
 }
+
 [data-theme="mono"] .btn {
   color: #000;
 }
+
 [data-theme="mono"] .btn.secondary {
   color: #fff;
 }
+
 * {
   box-sizing: border-box;
 }
+
 html {
   background: var(--color-background);
 }
+
 body {
   margin: 0;
   color: var(--color-foreground);
   background: var(--color-background);
   font-family: var(--font-montserrat), Arial, sans-serif;
 }
+
 a {
   color: inherit;
   text-decoration: none;
 }
+
 button,
 input,
 select,
 textarea {
   font: inherit;
 }
+
 button {
   cursor: pointer;
 }
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -77,15 +88,26 @@ textarea:focus-visible {
   outline: 3px solid var(--color-secondary);
   outline-offset: 3px;
 }
+
 .shell {
   width: min(1120px, calc(100% - 2rem));
   margin: auto;
   padding: 1.25rem 0 7rem;
 }
+
 .display {
   font-family: var(--font-gulfs), Georgia, serif;
   letter-spacing: 0.01em;
 }
+
+.product-name {
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+  font-size-adjust: none;
+  font-synthesis: none;
+  font-weight: 900;
+  letter-spacing: -0.015em;
+}
+
 .nav {
   border-bottom: 1px solid var(--color-border);
   background: var(--color-background);
@@ -93,6 +115,7 @@ textarea:focus-visible {
   top: 0;
   z-index: 20;
 }
+
 .nav-inner {
   width: min(1120px, calc(100% - 2rem));
   margin: auto;
@@ -102,10 +125,12 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 1rem;
 }
+
 .logo {
   width: 120px;
   height: auto;
 }
+
 .nav-links {
   display: none;
   gap: 1.2rem;
@@ -114,6 +139,7 @@ textarea:focus-visible {
   font-weight: 700;
   text-transform: uppercase;
 }
+
 .btn {
   min-height: 44px;
   display: inline-flex;
@@ -131,33 +157,41 @@ textarea:focus-visible {
     transform 0.15s ease,
     background 0.15s ease;
 }
+
 .btn:hover {
   transform: translate(-2px, -2px);
   box-shadow: 3px 3px 0 var(--color-border);
 }
+
 .btn.secondary {
   background: transparent;
   color: var(--color-primary);
 }
+
 .btn.danger {
   background: var(--color-danger);
 }
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
+
 .card {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
 }
+
 .card.bg-primary span {
   color: rgba(247, 247, 247, 0.82) !important;
 }
+
 .card.bg-primary {
   background: var(--color-primary);
 }
+
 .doodle {
   color: var(--color-primary);
   stroke: currentColor;
@@ -166,6 +200,7 @@ textarea:focus-visible {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
 .eyebrow {
   color: var(--color-primary);
   font-size: 0.74rem;
@@ -173,6 +208,7 @@ textarea:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
 .form-label {
   display: block;
   font-size: 0.76rem;
@@ -181,6 +217,7 @@ textarea:focus-visible {
   text-transform: uppercase;
   margin-bottom: 0.45rem;
 }
+
 .field {
   width: 100%;
   min-height: 46px;
@@ -190,9 +227,11 @@ textarea:focus-visible {
   border: 1px solid var(--color-border);
   border-radius: 0;
 }
+
 .field:focus {
   border-color: var(--color-primary);
 }
+
 .bottom-nav {
   position: fixed;
   z-index: 25;
@@ -205,6 +244,7 @@ textarea:focus-visible {
   background: var(--color-background);
   padding: 0.35rem 0.4rem max(0.35rem, env(safe-area-inset-bottom));
 }
+
 .bottom-nav a {
   min-height: 48px;
   padding: 0.35rem 0.6rem;
@@ -213,6 +253,7 @@ textarea:focus-visible {
   font-size: 0.65rem;
   font-weight: 700;
 }
+
 .cart-float {
   position: fixed;
   z-index: 24;
@@ -231,25 +272,31 @@ textarea:focus-visible {
   box-shadow: 4px 4px 0 var(--color-border);
   font-weight: 700;
 }
+
 @media (min-width: 720px) {
   .shell {
     padding-bottom: 3rem;
   }
+
   .nav-links {
     display: flex;
   }
+
   .bottom-nav {
     display: none;
   }
+
   .cart-float {
     left: auto;
     right: max(2rem, calc((100vw - 1120px) / 2));
     bottom: 2rem;
   }
+
   .logo {
     width: 140px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *:before,

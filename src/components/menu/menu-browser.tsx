@@ -71,7 +71,7 @@ export function MenuBrowser({ products, addons }: { products: Product[]; addons:
               />
             )}
             <p className="eyebrow">{product.category?.name}</p>
-            <h2 className="display text-3xl mt-2 leading-none">{product.name}</h2>
+            <h2 className="product-name text-2xl mt-2 leading-tight">{product.name}</h2>
             {product.description && (
               <p className="mt-2 text-sm text-[var(--color-muted)]">{product.description}</p>
             )}
@@ -146,7 +146,7 @@ function ProductDialog({
         <div className="flex justify-between">
           <div>
             <p className="eyebrow">Customize</p>
-            <h2 id="drink-title" className="display text-4xl mt-1">
+            <h2 id="drink-title" className="product-name text-3xl mt-1 leading-tight">
               {product.name}
             </h2>
           </div>
