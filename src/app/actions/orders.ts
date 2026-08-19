@@ -5,6 +5,8 @@ import { checkoutSchema, type CheckoutInput } from "@/lib/validation/order";
 import { sendFulfillmentEmail } from "@/lib/resend/fulfillment-email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { consumeRateLimit, rateLimitMessage } from "@/lib/rate-limit";
+import { getSettings } from "@/lib/data";
+import { dateIsBookable } from "@/lib/scheduling";
 
 export type OrderActionResult =
   { ok: true; orderNumber: number; guestToken?: string } | { ok: false; message: string };
@@ -12,6 +14,10 @@ async function submitOrderInternal(input: CheckoutInput): Promise<OrderActionRes
   const parsed = checkoutSchema.safeParse(input);
   if (!parsed.success)
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Please check your order." };
+  const settings = await getSettings();
+  if (!settings.accepting_orders) return { ok: false, message: "Pre-orders are currently closed." };
+  if (!dateIsBookable(parsed.data.fulfillmentDate, settings))
+    return { ok: false, message: "That fulfilment date is not currently open for booking." };
   const supabase = await createClient();
   const {
     data: { user },

@@ -58,15 +58,24 @@ export const dateIsBookable = (
   const target = new Date(`${date}T12:00:00Z`);
   const current = new Date(`${today}T12:00:00Z`);
   const diff = Math.round((target.getTime() - current.getTime()) / 86400000);
-  if (diff < 0 || diff > 7 || ![1, 2, 3].includes(target.getUTCDay())) return false;
+  if (diff < 0 || target.getUTCDay() === 0 || target.getUTCDay() === 6) return false;
   if (diff === 0) return slotIsOpen("morning", settings, now) || slotIsOpen("lunch", settings, now);
-  const weekday = target.getUTCDay();
-  return (
-    (weekday === 1 && diff <= 3) || (weekday === 2 && diff <= 1) || (weekday === 3 && diff <= 1)
+  const leadDaysByWeekday: Record<number, number> = {
+    1: settings.monday_booking_lead_days ?? 2,
+    2: settings.tuesday_booking_lead_days ?? 1,
+    3: settings.wednesday_booking_lead_days ?? 1,
+    4: settings.thursday_booking_lead_days ?? 1,
+    5: settings.friday_booking_lead_days ?? 1,
+  };
+  const firstBookableDate = new Date(target);
+  firstBookableDate.setUTCDate(
+    firstBookableDate.getUTCDate() -
+      Math.max(0, Math.min(6, leadDaysByWeekday[target.getUTCDay()] ?? 0)),
   );
+  return current >= firstBookableDate;
 };
 export const availableDates = (settings: BusinessSettings, now = new Date()): string[] =>
-  Array.from({ length: 8 }, (_, i) => {
+  Array.from({ length: 10 }, (_, i) => {
     const d = new Date(`${manilaDate(now)}T12:00:00Z`);
     d.setUTCDate(d.getUTCDate() + i);
     return d.toISOString().slice(0, 10);

@@ -43,6 +43,11 @@ export interface BusinessSettings {
   morning_cutoff: string;
   lunch_cutoff: string;
   slot_capacity: number;
+  monday_booking_lead_days: number;
+  tuesday_booking_lead_days: number;
+  wednesday_booking_lead_days: number;
+  thursday_booking_lead_days: number;
+  friday_booking_lead_days: number;
   timezone: string;
   payment_qr_url: string | null;
 }

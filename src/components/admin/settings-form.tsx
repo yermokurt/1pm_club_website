@@ -4,6 +4,14 @@ import { useRouter } from "next/navigation";
 import { Clock3, CupSoda } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import type { BusinessSettings } from "@/types/domain";
+const bookingDays = [
+  { key: "monday_booking_lead_days", label: "Monday", fallback: 2 },
+  { key: "tuesday_booking_lead_days", label: "Tuesday", fallback: 1 },
+  { key: "wednesday_booking_lead_days", label: "Wednesday", fallback: 1 },
+  { key: "thursday_booking_lead_days", label: "Thursday", fallback: 1 },
+  { key: "friday_booking_lead_days", label: "Friday", fallback: 1 },
+] as const;
+
 export function SettingsForm({ settings }: { settings: BusinessSettings }) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
@@ -12,17 +20,34 @@ export function SettingsForm({ settings }: { settings: BusinessSettings }) {
   const [morningCutoff, setMorningCutoff] = useState(settings.morning_cutoff);
   const [lunchCutoff, setLunchCutoff] = useState(settings.lunch_cutoff);
   const [slotCapacity, setSlotCapacity] = useState(settings.slot_capacity);
+  const [bookingLeadDays, setBookingLeadDays] = useState<
+    Record<(typeof bookingDays)[number]["key"], number>
+  >(
+    Object.fromEntries(
+      bookingDays.map(({ key, fallback }) => [key, settings[key] ?? fallback]),
+    ) as Record<(typeof bookingDays)[number]["key"], number>,
+  );
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     setAcceptingOrders(settings.accepting_orders);
     setMorningCutoff(settings.morning_cutoff);
     setLunchCutoff(settings.lunch_cutoff);
     setSlotCapacity(settings.slot_capacity);
+    setBookingLeadDays(
+      Object.fromEntries(
+        bookingDays.map(({ key, fallback }) => [key, settings[key] ?? fallback]),
+      ) as Record<(typeof bookingDays)[number]["key"], number>,
+    );
   }, [
     settings.accepting_orders,
     settings.lunch_cutoff,
     settings.morning_cutoff,
     settings.slot_capacity,
+    settings.friday_booking_lead_days,
+    settings.monday_booking_lead_days,
+    settings.thursday_booking_lead_days,
+    settings.tuesday_booking_lead_days,
+    settings.wednesday_booking_lead_days,
   ]);
   useEffect(() => {
     if (!message || messageType !== "success") return;
@@ -36,6 +61,7 @@ export function SettingsForm({ settings }: { settings: BusinessSettings }) {
       morning_cutoff: morningCutoff,
       lunch_cutoff: lunchCutoff,
       slot_capacity: slotCapacity,
+      ...bookingLeadDays,
     };
     const { error } = await createClient().from("business_settings").update(values).eq("id", true);
     setMessageType(error ? "error" : "success");
@@ -120,6 +146,43 @@ export function SettingsForm({ settings }: { settings: BusinessSettings }) {
             onChange={(event) => setSlotCapacity(Math.max(1, Number(event.target.value) || 1))}
           />
         </label>
+        <fieldset className="card p-4 sm:col-span-2">
+          <span className="form-label inline-label">
+            <Clock3 size={15} /> Weekly booking rules
+          </span>
+          <span className="block mt-1 text-xs text-[var(--color-muted)]">
+            Choose how many calendar days before each fulfilment day orders open.
+          </span>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {bookingDays.map(({ key, label }) => (
+              <label key={key}>
+                <span className="form-label">{label} fulfilment</span>
+                <select
+                  className="field"
+                  value={bookingLeadDays[key]}
+                  onChange={(event) =>
+                    setBookingLeadDays((current) => ({
+                      ...current,
+                      [key]: Number(event.target.value),
+                    }))
+                  }
+                >
+                  <option value="0">Same day only</option>
+                  <option value="1">1 day early</option>
+                  <option value="2">2 days early</option>
+                  <option value="3">3 days early</option>
+                  <option value="4">4 days early</option>
+                  <option value="5">5 days early</option>
+                  <option value="6">6 days early</option>
+                </select>
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-[var(--color-muted)]">
+            Defaults: Monday opens Saturday; Tuesday to Friday open the day before. Saturday and
+            Sunday are never fulfilment days.
+          </p>
+        </fieldset>
       </div>
       <p className="mt-5 text-xs text-[var(--color-muted)]">
         Timezone is fixed to Asia/Manila. QR payment cards are managed from the app&apos;s local

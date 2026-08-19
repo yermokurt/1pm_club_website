@@ -7,6 +7,11 @@ const defaultSettings: BusinessSettings = {
   morning_cutoff: "10:00",
   lunch_cutoff: "13:30",
   slot_capacity: 15,
+  monday_booking_lead_days: 2,
+  tuesday_booking_lead_days: 1,
+  wednesday_booking_lead_days: 1,
+  thursday_booking_lead_days: 1,
+  friday_booking_lead_days: 1,
   timezone: "Asia/Manila",
   payment_qr_url: null,
 };
