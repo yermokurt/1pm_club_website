@@ -16,7 +16,7 @@ import { ThemedLogo } from "./themed-logo";
 import { cartCupCount, useCartStore } from "@/stores/cart-store";
 import { createClient } from "@/lib/supabase/browser";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const links = [
   { href: "/", label: "Home", icon: Home },
@@ -27,6 +27,7 @@ const links = [
 export function Navigation() {
   const { theme, toggle } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
   const cups = useCartStore((state) => cartCupCount(state.lines));
   const [isAdmin, setIsAdmin] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export function Navigation() {
           </nav>
         </div>
       </header>
-      <CartFloat />
+      {pathname !== "/cart" && pathname !== "/checkout" && <CartFloat />}
       <nav className="bottom-nav" aria-label="Mobile navigation">
         {links.map(({ href, label, icon: Icon }) => (
           <span className="contents" key={href}>
