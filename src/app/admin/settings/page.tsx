@@ -5,7 +5,7 @@ export default async function SettingsPage() {
     <section className="pt-8">
       <p className="eyebrow">Business controls</p>
       <h2 className="display text-5xl mt-2">Settings</h2>
-      <div className="mt-7">
+      <div className="mt-7 flex justify-center">
         <SettingsForm settings={await getSettings()} />
       </div>
     </section>

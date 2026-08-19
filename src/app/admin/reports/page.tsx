@@ -14,19 +14,28 @@ const statuses = [
 ];
 const today = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+const currentWeekRange = () => {
+  const date = new Date(today() + "T12:00:00Z");
+  const mondayOffset = date.getUTCDay() === 0 ? -6 : 1 - date.getUTCDay();
+  const monday = new Date(date);
+  monday.setUTCDate(monday.getUTCDate() + mondayOffset);
+  const friday = new Date(monday);
+  friday.setUTCDate(friday.getUTCDate() + 4);
+  return {
+    from: monday.toISOString().slice(0, 10),
+    to: friday.toISOString().slice(0, 10),
+  };
+};
 export default async function ReportsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
-  const to = params.to && /^\d{4}-\d{2}-\d{2}$/.test(params.to) ? params.to : today();
-  const start = new Date(`${to}T12:00:00Z`);
-  start.setUTCDate(start.getUTCDate() - 29);
+  const defaultRange = currentWeekRange();
+  const to = params.to && /^\d{4}-\d{2}-\d{2}$/.test(params.to) ? params.to : defaultRange.to;
   const from =
-    params.from && /^\d{4}-\d{2}-\d{2}$/.test(params.from)
-      ? params.from
-      : start.toISOString().slice(0, 10);
+    params.from && /^\d{4}-\d{2}-\d{2}$/.test(params.from) ? params.from : defaultRange.from;
   const status = statuses.includes(params.status ?? "") ? params.status : "";
   const payment = ["qr", "cod"].includes(params.payment ?? "") ? params.payment : "";
   const fulfilment = ["pickup", "delivery"].includes(params.fulfilment ?? "")
@@ -67,7 +76,7 @@ export default async function ReportsPage({
     <section className="pt-8">
       <p className="eyebrow">Historical operations</p>
       <h2 className="display text-5xl mt-2">Reports</h2>
-      <form className="card grid sm:grid-cols-2 lg:grid-cols-5 gap-3 p-5 mt-7">
+      <form className="card grid grid-cols-2 gap-3 p-5 mt-7 lg:grid-cols-5">
         <label>
           <span className="form-label">From</span>
           <input className="field" type="date" name="from" defaultValue={from} />
@@ -103,7 +112,7 @@ export default async function ReportsPage({
             <option value="delivery">Delivery</option>
           </select>
         </label>
-        <button className="btn sm:col-span-2 lg:col-span-5">Apply filters</button>
+        <button className="btn !min-h-[46px] col-span-2 lg:col-span-5">Apply filters</button>
       </form>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-6">
         {summary.map(([label, value]) => (

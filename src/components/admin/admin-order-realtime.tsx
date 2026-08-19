@@ -18,7 +18,9 @@ export function AdminOrderRealtime() {
       )
       .subscribe();
     // Fallback for instances where the orders table is not in the Realtime publication.
-    const interval = window.setInterval(() => router.refresh(), 15_000);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 60_000);
     return () => {
       window.clearInterval(interval);
       void client.removeChannel(channel);

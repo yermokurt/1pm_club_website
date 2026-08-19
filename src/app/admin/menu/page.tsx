@@ -5,10 +5,18 @@ export default async function AdminMenuPage() {
   const [{ data }, { data: categories }] = await Promise.all([
     supabase
       .from("products")
-      .select("id,name,description,image_url,is_available,price_centavos,sort_order")
+      .select(
+        "id,name,description,image_url,is_available,price_centavos,sort_order,category_id,categories(name)",
+      )
       .order("sort_order"),
     supabase.from("categories").select("id,name").order("sort_order"),
   ]);
+  const categoryOptions = (categories ?? []) as Array<{ id: string; name: string }>;
+  const items = (data ?? []).map((item) => ({
+    ...item,
+    category_name:
+      categoryOptions.find((category) => category.id === item.category_id)?.name ?? null,
+  }));
   return (
     <section className="pt-8">
       <p className="eyebrow">Catalogue</p>
@@ -20,13 +28,15 @@ export default async function AdminMenuPage() {
         <CatalogManager
           table="products"
           priceable
-          categories={(categories ?? []) as unknown as Array<{ id: string; name: string }>}
+          categories={categoryOptions}
           items={
-            (data ?? []) as unknown as Array<{
+            items as unknown as Array<{
               id: string;
               name: string;
               description: string | null;
               image_url: string | null;
+              category_id: string;
+              category_name: string | null;
               is_available: boolean;
               price_centavos: number;
               sort_order: number;

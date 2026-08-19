@@ -67,7 +67,6 @@ export function MenuBrowser({ products, addons }: { products: Product[]; addons:
                 alt=""
                 width={400}
                 height={400}
-                unoptimized
               />
             )}
             <p className="eyebrow">{product.category?.name}</p>
@@ -162,7 +161,6 @@ function ProductDialog({
             alt=""
             width={400}
             height={400}
-            unoptimized
           />
         )}
         {product.description && (

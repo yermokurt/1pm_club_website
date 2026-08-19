@@ -16,6 +16,7 @@ import { ThemedLogo } from "./themed-logo";
 import { cartCupCount, useCartStore } from "@/stores/cart-store";
 import { createClient } from "@/lib/supabase/browser";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const links = [
   { href: "/", label: "Home", icon: Home },
@@ -25,6 +26,7 @@ const links = [
 ];
 export function Navigation() {
   const { theme, toggle } = useTheme();
+  const router = useRouter();
   const cups = useCartStore((state) => cartCupCount(state.lines));
   const [isAdmin, setIsAdmin] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -41,6 +43,11 @@ export function Navigation() {
     };
     void loadRole();
   }, []);
+  useEffect(() => {
+    const routes = ["/menu", "/orders", "/profile", "/cart", ...(isAdmin ? ["/admin"] : [])];
+    const timer = window.setTimeout(() => routes.forEach((route) => router.prefetch(route)), 700);
+    return () => window.clearTimeout(timer);
+  }, [isAdmin, router]);
   return (
     <>
       <header className="nav">

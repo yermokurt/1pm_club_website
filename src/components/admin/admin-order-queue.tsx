@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import { deleteOrderByAdmin, updateOrderByAdmin } from "@/app/actions/orders";
 import { formatPeso } from "@/lib/currency";
 import type { OrderSummary } from "@/types/domain";
@@ -10,6 +11,7 @@ const next: Partial<Record<OrderSummary["order_status"], string>> = {
   ready_for_pickup: "completed",
   to_be_delivered: "completed",
 };
+const pageSize = 12;
 type AdminOrder = OrderSummary & {
   customer_email_snapshot?: string | null;
   department_name_snapshot?: string | null;
@@ -23,6 +25,9 @@ type AdminOrder = OrderSummary & {
 };
 export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
   const [filter, setFilter] = useState("all");
+  const [fulfillmentDate, setFulfillmentDate] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminOrder | null>(null);
@@ -37,7 +42,20 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
       document.body.style.overflow = original;
     };
   }, [deleteTarget, selected]);
-  const filtered = orders.filter((order) => filter === "all" || order.order_status === filter);
+  const filtered = orders.filter((order) => {
+    const matchesStatus = filter === "all" || order.order_status === filter;
+    const matchesDate = !fulfillmentDate || order.fulfillment_date === fulfillmentDate;
+    const query = search.trim().toLocaleLowerCase();
+    const matchesSearch =
+      !query ||
+      String(order.order_number).includes(query) ||
+      order.customer_name_snapshot.toLocaleLowerCase().includes(query) ||
+      order.customer_email_snapshot?.toLocaleLowerCase().includes(query);
+    return matchesStatus && matchesDate && matchesSearch;
+  });
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const shownOrders = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const update = (id: string, status: string, payment?: string) =>
     start(() => {
       void updateOrderByAdmin(id, status, payment).then((result) => {
@@ -66,7 +84,77 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
       : next[order.order_status];
   return (
     <>
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="card mb-5 grid gap-3 p-4 md:grid-cols-4">
+        <label className="relative block">
+          <span className="form-label">Search orders</span>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-3 left-3 text-[var(--color-muted)]"
+            size={16}
+          />
+          <input
+            className="field with-leading-icon"
+            value={search}
+            placeholder="Order number, customer, or email"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <label>
+          <span className="form-label">Status</span>
+          <select
+            className="field"
+            value={filter}
+            onChange={(event) => {
+              setFilter(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All statuses</option>
+            {[
+              "pending",
+              "confirmed",
+              "preparing",
+              "ready_for_pickup",
+              "to_be_delivered",
+              "completed",
+              "rejected",
+              "cancelled",
+            ].map((value) => (
+              <option key={value} value={value}>
+                {value.replaceAll("_", " ")}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="form-label">Fulfilment date</span>
+          <input
+            className="field"
+            type="date"
+            value={fulfillmentDate}
+            onChange={(event) => {
+              setFulfillmentDate(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <button
+          className="btn secondary filter-action"
+          type="button"
+          onClick={() => {
+            setFilter("all");
+            setFulfillmentDate("");
+            setSearch("");
+            setPage(1);
+          }}
+        >
+          Clear filters
+        </button>
+      </div>
+      <div className="hidden">
         {[
           "all",
           "pending",
@@ -92,8 +180,11 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
           {message}
         </p>
       )}
+      <p className="mb-3 text-sm text-[var(--color-muted)]">
+        {filtered.length} {filtered.length === 1 ? "order" : "orders"} shown
+      </p>
       <div className="grid gap-3">
-        {filtered.map((order) => (
+        {shownOrders.map((order) => (
           <article key={order.id} className="card p-5">
             <div className="flex flex-wrap gap-4 justify-between">
               <div>
@@ -174,6 +265,29 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
             </div>
           </article>
         ))}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-muted)]">
+        <span>
+          Page {currentPage} of {pageCount}
+        </span>
+        <div className="flex gap-2">
+          <button
+            className="btn secondary !min-h-9 !px-3"
+            type="button"
+            disabled={currentPage === 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Previous
+          </button>
+          <button
+            className="btn secondary !min-h-9 !px-3"
+            type="button"
+            disabled={currentPage === pageCount}
+            onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+          >
+            Next
+          </button>
+        </div>
       </div>
       {selected && (
         <div

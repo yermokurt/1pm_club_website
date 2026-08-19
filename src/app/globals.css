@@ -187,6 +187,12 @@ textarea:focus-visible {
 .card.bg-primary span {
   color: rgba(247, 247, 247, 0.82) !important;
 }
+.settings-toggle.bg-primary span {
+  color: inherit !important;
+}
+.settings-toggle.bg-primary {
+  color: var(--color-background);
+}
 
 .card.bg-primary {
   background: var(--color-primary);
@@ -228,8 +234,33 @@ textarea:focus-visible {
   border-radius: 0;
 }
 
+input.field,
+select.field {
+  height: 46px;
+  min-height: 46px;
+}
+
 .field:focus {
   border-color: var(--color-primary);
+}
+
+.field.with-leading-icon {
+  padding-left: 2.8rem;
+}
+
+.filter-action {
+  height: 46px !important;
+  min-height: 46px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 1.65rem;
+}
+
+.form-label.inline-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 
 .bottom-nav {

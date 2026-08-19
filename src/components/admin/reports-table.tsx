@@ -1,6 +1,5 @@
 "use client";
 import { formatPeso } from "@/lib/currency";
-import * as XLSX from "xlsx-js-style";
 
 export type ReportOrder = {
   order_number: number;
@@ -77,7 +76,8 @@ export function ReportsTable({ orders }: { orders: ReportOrder[] }) {
     link.click();
     URL.revokeObjectURL(url);
   };
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
+    const XLSX = await import("xlsx-js-style");
     const worksheet = XLSX.utils.aoa_to_sheet([fields, ...inventoryRows]);
     const lastColumn = XLSX.utils.encode_col(fields.length - 1);
     worksheet["!autofilter"] = { ref: `A1:${lastColumn}${inventoryRows.length + 1}` };
@@ -135,16 +135,52 @@ export function ReportsTable({ orders }: { orders: ReportOrder[] }) {
     return <div className="card p-7 text-[var(--color-muted)]">No orders match these filters.</div>;
   return (
     <>
-      <button className="btn secondary mb-4" onClick={exportCsv}>
-        Export CSV
-      </button>
-      <button className="btn secondary mb-4 ml-3" onClick={exportXlsx}>
-        Export to XLSX
-      </button>
-      <button className="btn secondary mb-4 ml-3" onClick={exportPdf}>
-        Export PDF
-      </button>
-      <div className="overflow-x-auto border border-[var(--color-border)]">
+      <div className="mb-4 flex flex-wrap gap-3">
+        <button className="btn secondary" onClick={exportCsv}>
+          Export CSV
+        </button>
+        <button className="btn secondary" onClick={exportXlsx}>
+          Export to XLSX
+        </button>
+        <button className="btn secondary" onClick={exportPdf}>
+          Export PDF
+        </button>
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {orders.map((order) => (
+          <article className="card p-4" key={order.order_number}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <strong>#{order.order_number}</strong>
+                <p className="mt-1 text-sm text-[var(--color-muted)]">{order.fulfillment_date}</p>
+              </div>
+              <strong>{formatPeso(order.total_centavos)}</strong>
+            </div>
+            <p className="mt-3 font-bold">{order.customer_name_snapshot}</p>
+            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--color-border)] pt-3 text-sm">
+              <p>
+                <span className="form-label">Cups</span>
+                {order.order_items.reduce((total, item) => total + item.quantity, 0)}
+              </p>
+              <p>
+                <span className="form-label">Fulfilment</span>
+                <span className="capitalize">{order.order_method}</span>
+              </p>
+              <p>
+                <span className="form-label">Payment</span>
+                <span className="capitalize">
+                  {order.payment_method ?? "QR"} · {order.payment_status}
+                </span>
+              </p>
+              <p>
+                <span className="form-label">Status</span>
+                <span className="capitalize">{order.order_status.replaceAll("_", " ")}</span>
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto border border-[var(--color-border)] md:block">
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-[var(--color-surface)] text-left">
             <tr>

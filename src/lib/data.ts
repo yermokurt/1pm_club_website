@@ -27,35 +27,23 @@ export async function getMostOrderedProducts(products: Product[]): Promise<Produ
   const available = products.filter((product) => product.is_available);
   try {
     const admin = createAdminClient();
-    const [{ data: orders, error: ordersError }, { data: items, error: itemsError }] =
-      await Promise.all([
-        admin.from("orders").select("id,order_status"),
-        admin.from("order_items").select("order_id,product_id,quantity"),
-      ]);
-    if (ordersError || itemsError) throw ordersError ?? itemsError;
-    const countableOrders = new Set(
-      ((orders ?? []) as Array<{ id: string; order_status: string }>)
-        .filter((order) => !["rejected", "cancelled"].includes(order.order_status))
-        .map((order) => order.id),
+    const { data, error } = await admin.rpc("get_most_ordered_product_ids", {
+      p_limit: 3,
+      p_days: 90,
+    });
+    if (error) throw error;
+    const rank = new Map(
+      ((data ?? []) as Array<{ product_id: string }>).map(({ product_id }, index) => [
+        product_id,
+        index,
+      ]),
     );
-    const quantities = new Map<string, number>();
-    for (const item of (items ?? []) as Array<{
-      order_id: string;
-      product_id: string;
-      quantity: number;
-    }>) {
-      if (countableOrders.has(item.order_id))
-        quantities.set(item.product_id, (quantities.get(item.product_id) ?? 0) + item.quantity);
-    }
     return [...available]
-      .sort(
-        (first, second) =>
-          (quantities.get(second.id) ?? 0) - (quantities.get(first.id) ?? 0) ||
-          first.sort_order - second.sort_order,
-      )
+      .filter((product) => rank.has(product.id))
+      .sort((first, second) => (rank.get(first.id) ?? 0) - (rank.get(second.id) ?? 0))
       .slice(0, 3);
   } catch {
-    // Keep the homepage useful while a server-only key is unavailable locally.
+    // Keep the homepage useful before the performance migration is installed.
     return available.slice(0, 3);
   }
 }
