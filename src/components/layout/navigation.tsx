@@ -86,7 +86,7 @@ export function Navigation() {
           </nav>
         </div>
       </header>
-      {pathname !== "/cart" && pathname !== "/checkout" && <CartFloat />}
+      {(pathname === "/" || pathname === "/menu") && <CartFloat />}
       <nav className="bottom-nav" aria-label="Mobile navigation">
         {links.map(({ href, label, icon: Icon }) => (
           <span className="contents" key={href}>
