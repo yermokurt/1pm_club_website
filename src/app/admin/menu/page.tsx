@@ -6,7 +6,7 @@ export default async function AdminMenuPage() {
     supabase
       .from("products")
       .select(
-        "id,name,description,image_url,is_available,price_centavos,sort_order,category_id,categories(name)",
+        "id,name,description,image_url,is_available,is_hot_available,is_iced_available,price_centavos,sort_order,category_id,categories(name)",
       )
       .order("sort_order"),
     supabase.from("categories").select("id,name").order("sort_order"),
@@ -38,6 +38,8 @@ export default async function AdminMenuPage() {
               category_id: string;
               category_name: string | null;
               is_available: boolean;
+              is_hot_available: boolean;
+              is_iced_available: boolean;
               price_centavos: number;
               sort_order: number;
             }>

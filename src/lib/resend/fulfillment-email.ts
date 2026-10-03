@@ -41,7 +41,7 @@ export async function sendFulfillmentEmail(orderId: string): Promise<Fulfillment
     order_number: number;
     order_method: string;
     fulfillment_date: string;
-    time_slot: string;
+    time_slot: string | null;
     order_status: string;
     payment_status: string;
     ready_email_sent_at: string | null;
@@ -102,7 +102,7 @@ export async function sendFulfillmentEmail(orderId: string): Promise<Fulfillment
               <p style="margin:10px 0 0;font-size:14px;line-height:1.5;">${isDelivery ? "Your order is on its way to your department." : "Your order is ready for collection."}</p>
             </div>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:20px;border-collapse:collapse;font-size:14px;">
-              <tr><td style="padding:10px 0;border-bottom:1px solid #000728;font-weight:700;">Fulfillment</td><td align="right" style="padding:10px 0;border-bottom:1px solid #000728;">${escapeHtml(value.fulfillment_date)} · ${escapeHtml(value.time_slot)}</td></tr>
+              <tr><td style="padding:10px 0;border-bottom:1px solid #000728;font-weight:700;">Order date</td><td align="right" style="padding:10px 0;border-bottom:1px solid #000728;">${escapeHtml(value.fulfillment_date)}${value.time_slot ? ` · ${escapeHtml(value.time_slot)}` : ""}</td></tr>
               <tr><td style="padding:10px 0;border-bottom:1px solid #000728;font-weight:700;">Order status</td><td align="right" style="padding:10px 0;border-bottom:1px solid #000728;text-transform:capitalize;">${escapeHtml(value.order_status.replaceAll("_", " "))}</td></tr>
               <tr><td style="padding:10px 0;font-weight:700;">Payment status</td><td align="right" style="padding:10px 0;text-transform:capitalize;">${escapeHtml(value.payment_status)}</td></tr>
             </table>

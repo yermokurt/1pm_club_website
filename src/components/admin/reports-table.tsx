@@ -8,13 +8,14 @@ export type ReportOrder = {
   customer_email_snapshot: string | null;
   order_method: string;
   department_name_snapshot: string | null;
-  time_slot: string;
+  time_slot: string | null;
   payment_method: string | null;
   payment_status: string;
   order_status: string;
   total_centavos: number;
   order_items: Array<{
     product_name_snapshot: string;
+    temperature_snapshot?: string | null;
     quantity: number;
     subtotal_centavos: number;
     order_item_addons?: Array<{ addon_name_snapshot: string }>;
@@ -29,11 +30,11 @@ export function ReportsTable({ orders }: { orders: ReportOrder[] }) {
     "Email",
     "Fulfilment Method",
     "Department",
-    "Slot",
     "Payment Method",
     "Payment Status",
     "Order Status",
     "Drink",
+    "Temperature",
     "Add-ons",
     "Cup Total",
     "Order Total",
@@ -47,11 +48,11 @@ export function ReportsTable({ orders }: { orders: ReportOrder[] }) {
         order.customer_email_snapshot ?? "",
         order.order_method,
         order.department_name_snapshot ?? "",
-        order.time_slot,
         order.payment_method ?? "",
         order.payment_status,
         order.order_status,
         item.product_name_snapshot,
+        item.temperature_snapshot ?? "",
         (item.order_item_addons ?? []).map((addon) => addon.addon_name_snapshot).join(", "),
         item.subtotal_centavos / item.quantity / 100,
         order.total_centavos / 100,

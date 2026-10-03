@@ -15,6 +15,8 @@ type RecordItem = {
   image_url?: string | null;
   category_id?: string | null;
   category_name?: string | null;
+  is_hot_available?: boolean;
+  is_iced_available?: boolean;
   sort_order: number;
 };
 
@@ -85,6 +87,14 @@ export function CatalogManager({
   };
   const saveEditor = async () => {
     if (!editing || !draft.name?.trim()) return;
+    if (
+      table === "products" &&
+      draft.is_hot_available === false &&
+      draft.is_iced_available === false
+    ) {
+      setMessage("Enable Hot or Iced before saving this product.");
+      return;
+    }
     const values: Record<string, unknown> = {
       name: draft.name.trim(),
       is_available: draft.is_available !== false,
@@ -94,6 +104,8 @@ export function CatalogManager({
             category_id: draft.category_id || null,
             description: draft.description?.trim() || null,
             image_url: draft.image_url || null,
+            is_hot_available: draft.is_hot_available !== false,
+            is_iced_available: draft.is_iced_available !== false,
           }
         : {}),
     };
@@ -122,6 +134,8 @@ export function CatalogManager({
     if (table === "products") {
       values.category_id = String(formData.get("category_id") ?? "");
       values.description = String(formData.get("description") ?? "").trim() || null;
+      values.is_hot_available = true;
+      values.is_iced_available = true;
     }
     const { data, error } = await createClient().from(table).insert(values).select().single();
     if (error || !data) {
@@ -247,6 +261,14 @@ export function CatalogManager({
                       {item.description}
                     </p>
                   )}
+                  <span className="mt-1 block text-xs text-[var(--color-muted)]">
+                    {[
+                      item.is_hot_available !== false && "Hot",
+                      item.is_iced_available !== false && "Iced",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "No serving options"}
+                  </span>
                 </>
               )}
               <div className="mt-3 sm:hidden">
@@ -347,7 +369,9 @@ export function CatalogManager({
                 <input className="field" name="name" required />
               </label>
               <label>
-                <span className="form-label">Price (₱)</span>
+                <span className="form-label">
+                  {table === "products" ? "General price (₱)" : "Price (₱)"}
+                </span>
                 <input
                   className="field"
                   type="number"
@@ -407,7 +431,9 @@ export function CatalogManager({
                 />
               </label>
               <label>
-                <span className="form-label">Price (₱)</span>
+                <span className="form-label">
+                  {table === "products" ? "General price (₱)" : "Price (₱)"}
+                </span>
                 <input
                   className="field"
                   type="number"
@@ -446,6 +472,31 @@ export function CatalogManager({
                     onChange={(event) => updateDraft({ description: event.target.value })}
                   />
                 </label>
+              )}
+              {table === "products" && (
+                <fieldset className="card grid gap-3 p-4 sm:col-span-2 sm:grid-cols-2">
+                  <legend className="form-label px-1">Serving options</legend>
+                  {(
+                    [
+                      ["is_hot_available", "Enable hot"],
+                      ["is_iced_available", "Enable iced"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label className="flex items-center gap-3" key={key}>
+                      <input
+                        type="checkbox"
+                        checked={draft[key] !== false}
+                        onChange={(event) => updateDraft({ [key]: event.target.checked })}
+                      />
+                      <span className="font-bold">{label}</span>
+                    </label>
+                  ))}
+                  {draft.is_hot_available === false && draft.is_iced_available === false && (
+                    <p className="text-sm text-[var(--color-danger)] sm:col-span-2">
+                      Enable Hot or Iced before saving this product.
+                    </p>
+                  )}
+                </fieldset>
               )}
             </div>
             {table === "products" && (

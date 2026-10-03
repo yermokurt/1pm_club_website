@@ -1,11 +1,11 @@
 "use client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Addon, CartLine, Product } from "@/types/domain";
+import type { Addon, CartLine, DrinkTemperature, Product } from "@/types/domain";
 
 interface CartState {
   lines: CartLine[];
-  add: (product: Product, addons: Addon[], quantity: number) => void;
+  add: (product: Product, addons: Addon[], quantity: number, temperature: DrinkTemperature) => void;
   setQuantity: (lineId: string, quantity: number) => void;
   remove: (lineId: string) => void;
   clear: () => void;
@@ -16,9 +16,9 @@ export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
       lines: [],
-      add: (product, addons, quantity) =>
+      add: (product, addons, quantity, temperature) =>
         set((state) => ({
-          lines: [...state.lines, { lineId: makeId(), product, addons, quantity }],
+          lines: [...state.lines, { lineId: makeId(), product, addons, quantity, temperature }],
         })),
       setQuantity: (lineId, quantity) =>
         set((state) => ({

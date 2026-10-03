@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/currency";
-import { getSettings } from "@/lib/data";
 
 const statuses = [
   "pending",
@@ -53,7 +52,7 @@ export default async function AnalyticsPage({
   if (status) query = query.eq("order_status", status);
   if (payment) query = query.eq("payment_method", payment);
   if (fulfilment) query = query.eq("order_method", fulfilment);
-  const [{ data }, settings] = await Promise.all([query, getSettings()]);
+  const { data } = await query;
   const orders = (data ?? []) as Array<{
     created_at: string;
     order_status: string;
@@ -113,8 +112,8 @@ export default async function AnalyticsPage({
   });
   const dailyOrders = [...perDay.entries()];
   const peakDrinks = Math.max(1, ...dailyOrders.map(([, count]) => count));
-  const chartCapacity = Math.max(1, settings.slot_capacity);
-  const midpoint = Math.ceil(chartCapacity / 2);
+  const chartScale = Math.max(1, peakDrinks);
+  const midpoint = Math.ceil(chartScale / 2);
   return (
     <section className="pt-8">
       <p className="eyebrow">Orders placed analytics</p>
@@ -192,24 +191,24 @@ export default async function AnalyticsPage({
         <div className="card p-6">
           <p className="eyebrow">Total drinks per day</p>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Daily slot capacity: {chartCapacity} cups
+            Drinks ordered in the selected range
           </p>
           <div className="mt-5 grid grid-cols-[2.25rem_1fr] gap-2">
             <div className="flex h-56 flex-col justify-between text-right text-xs text-[var(--color-muted)]">
-              <span>{chartCapacity}</span>
+              <span>{chartScale}</span>
               <span>{midpoint}</span>
               <span>0</span>
             </div>
             <div
               className="flex h-56 items-end gap-1 border-b border-l border-[var(--color-border)] bg-[linear-gradient(to_bottom,transparent_49.5%,var(--color-border)_50%,transparent_50.5%)]"
               role="img"
-              aria-label={`Bar chart showing total drinks for each day in the selected range, scaled to the ${chartCapacity}-cup daily capacity`}
+              aria-label="Bar chart showing total drinks for each day in the selected range"
             >
               {dailyOrders.map(([day, count]) => (
                 <div className="group flex h-full min-w-0 flex-1 flex-col justify-end" key={day}>
                   <div
                     className="min-h-1 bg-primary transition-[height]"
-                    style={{ height: `${Math.min(100, (count / chartCapacity) * 100)}%` }}
+                    style={{ height: `${Math.min(100, (count / chartScale) * 100)}%` }}
                     title={`${day}: ${count} drink${count === 1 ? "" : "s"}`}
                   />
                 </div>

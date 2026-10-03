@@ -27,6 +27,9 @@ export function CartPage() {
             <div className="flex-1">
               <p className="eyebrow">{line.product.category?.name}</p>
               <h2 className="product-name text-2xl mt-1">{line.product.name}</h2>
+              <p className="mt-1 text-sm font-bold capitalize text-[var(--color-primary)]">
+                {line.temperature ?? (line.product.is_iced_available ? "iced" : "hot")}
+              </p>
               {line.addons.length > 0 && (
                 <p className="text-sm mt-2 text-[var(--color-muted)]">
                   + {line.addons.map((addon) => addon.name).join(", ")}

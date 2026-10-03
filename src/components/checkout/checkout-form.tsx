@@ -1,15 +1,13 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import type { BusinessSettings, SlotCapacity } from "@/types/domain";
+import type { BusinessSettings } from "@/types/domain";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validation/order";
-import { availableDates, manilaDate, slotIsOpen } from "@/lib/scheduling";
 import { cartCupCount, cartTotal, useCartStore } from "@/stores/cart-store";
 import { formatPeso } from "@/lib/currency";
 import { submitOrder } from "@/app/actions/orders";
-import { createClient } from "@/lib/supabase/browser";
 import { QrPaymentCarousel } from "./qr-payment-carousel";
 
 export function CheckoutForm({
@@ -24,9 +22,6 @@ export function CheckoutForm({
   const router = useRouter();
   const lines = useCartStore((state) => state.lines);
   const clear = useCartStore((state) => state.clear);
-  const [now, setNow] = useState(() => new Date());
-  const dates = useMemo(() => availableDates(settings, now), [settings, now]);
-  const [capacities, setCapacities] = useState<SlotCapacity[]>([]);
   const [online, setOnline] = useState(true);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -37,27 +32,18 @@ export function CheckoutForm({
       customerEmail: initialEmail,
       orderMethod: "pickup",
       paymentMethod: "qr",
-      fulfillmentDate: dates[0] ?? "",
-      timeSlot: "morning",
       items: [],
     },
   });
   const method = form.watch("orderMethod");
   const paymentMethod = form.watch("paymentMethod");
-  const date = form.watch("fulfillmentDate");
-  const slot = form.watch("timeSlot");
-  const isSlotStillOpen = (value: "morning" | "lunch") =>
-    date !== manilaDate(now) || slotIsOpen(value, settings, now);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
   useEffect(() => {
     form.setValue(
       "items",
       lines.map((line) => ({
         productId: line.product.id,
         addonIds: line.addons.map((addon) => addon.id),
+        temperature: line.temperature ?? (line.product.is_iced_available ? "iced" : "hot"),
         quantity: line.quantity,
       })),
       { shouldValidate: false },
@@ -66,20 +52,6 @@ export function CheckoutForm({
   useEffect(() => {
     if (method === "pickup") form.setValue("departmentName", undefined);
   }, [method, form]);
-  useEffect(() => {
-    if (!date || isSlotStillOpen(slot)) return;
-    const alternative = slot === "morning" ? "lunch" : "morning";
-    if (isSlotStillOpen(alternative)) form.setValue("timeSlot", alternative);
-  }, [date, now, slot, form]);
-  const refreshCapacity = useCallback(async () => {
-    if (!date) return setCapacities([]);
-    try {
-      const response = await fetch(`/api/capacity?date=${date}`, { cache: "no-store" });
-      setCapacities(response.ok ? ((await response.json()) as SlotCapacity[]) : []);
-    } catch {
-      setCapacities([]);
-    }
-  }, [date]);
   useEffect(() => {
     const sync = () => setOnline(navigator.onLine);
     sync();
@@ -90,45 +62,9 @@ export function CheckoutForm({
       window.removeEventListener("offline", sync);
     };
   }, []);
-  useEffect(() => {
-    void refreshCapacity();
-  }, [refreshCapacity]);
-  useEffect(() => {
-    if (!date) return;
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`checkout-capacity-${date}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "slot_capacity_events",
-          filter: `fulfillment_date=eq.${date}`,
-        },
-        () => void refreshCapacity(),
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [date, refreshCapacity]);
-  useEffect(() => {
-    const cap = capacities.find((item) => item.time_slot === slot);
-    if (cap && cap.capacity - cap.reserved_cups < cartCupCount(lines))
-      form.setError("timeSlot", {
-        message: `Only ${Math.max(0, cap.capacity - cap.reserved_cups)} cups remain for this slot.`,
-      });
-  }, [capacities, slot, lines, form]);
   const submit = (values: CheckoutInput) => {
     if (!lines.length) return setMessage("Your cart is empty.");
     if (!online) return setMessage("You’re offline. Reconnect before submitting your pre-order.");
-    if (values.fulfillmentDate === manilaDate() && !slotIsOpen(values.timeSlot, settings))
-      return setMessage("That ordering cutoff has passed. Please choose another available time.");
-    const requested = cartCupCount(lines);
-    const cap = capacities.find((item) => item.time_slot === values.timeSlot);
-    if (cap && cap.capacity - cap.reserved_cups < requested)
-      return setMessage(`Only ${cap.capacity - cap.reserved_cups} cups remain for this slot.`);
     startTransition(async () => {
       try {
         const result = await submitOrder({
@@ -136,6 +72,7 @@ export function CheckoutForm({
           items: lines.map((line) => ({
             productId: line.product.id,
             addonIds: line.addons.map((addon) => addon.id),
+            temperature: line.temperature ?? (line.product.is_iced_available ? "iced" : "hot"),
             quantity: line.quantity,
           })),
         });
@@ -241,123 +178,6 @@ export function CheckoutForm({
               </label>
             ))}
           </div>
-        </section>
-        <section>
-          <p className="eyebrow">Select fulfilment date</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-            {dates.map((value) => (
-              <label
-                key={value}
-                className={`card p-4 cursor-pointer transition-colors ${date === value ? "bg-primary border-primary text-white" : ""}`}
-              >
-                <input
-                  className="sr-only"
-                  type="radio"
-                  value={value}
-                  {...form.register("fulfillmentDate")}
-                />
-                <span className="block text-xs uppercase font-bold">
-                  {new Intl.DateTimeFormat("en-PH", { weekday: "long", timeZone: "UTC" }).format(
-                    new Date(`${value}T12:00:00Z`),
-                  )}
-                </span>
-                <strong>
-                  {new Intl.DateTimeFormat("en-PH", {
-                    month: "short",
-                    day: "numeric",
-                    timeZone: "UTC",
-                  }).format(new Date(`${value}T12:00:00Z`))}
-                </strong>
-              </label>
-            ))}
-          </div>
-        </section>
-        <section>
-          <p className="eyebrow">Select time</p>
-          {(() => {
-            const selectedCapacity = capacities.find((item) => item.time_slot === slot);
-            if (!selectedCapacity)
-              return (
-                <p className="mt-4 text-sm text-[var(--color-muted)]" aria-live="polite">
-                  Checking live capacity…
-                </p>
-              );
-            const percentage = Math.min(
-              100,
-              Math.round((selectedCapacity.reserved_cups / selectedCapacity.capacity) * 100),
-            );
-            const remaining = Math.max(
-              0,
-              selectedCapacity.capacity - selectedCapacity.reserved_cups,
-            );
-            const fill =
-              percentage >= 100
-                ? "var(--color-danger)"
-                : percentage >= 80
-                  ? "var(--color-warning)"
-                  : "var(--color-primary)";
-            return (
-              <div className="card mt-4 p-4" aria-live="polite">
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <strong>Daily capacity (morning + lunch)</strong>
-                  <span>
-                    {selectedCapacity.reserved_cups} / {selectedCapacity.capacity} cups
-                  </span>
-                </div>
-                <div
-                  className="mt-2 h-3 overflow-hidden border border-[var(--color-border)]"
-                  role="progressbar"
-                  aria-label="Daily capacity shared by morning and lunch"
-                  aria-valuemin={0}
-                  aria-valuenow={selectedCapacity.reserved_cups}
-                  aria-valuemax={selectedCapacity.capacity}
-                >
-                  <div
-                    className="h-full transition-[width]"
-                    style={{ width: `${percentage}%`, background: fill }}
-                  />
-                </div>
-                <p className="mt-2 text-xs text-[var(--color-muted)]">
-                  {remaining > 0 ? `${remaining} cups remaining today` : "Today is fully booked."}
-                </p>
-              </div>
-            );
-          })()}
-          <div className="grid sm:grid-cols-2 gap-3 mt-4">
-            {(["morning", "lunch"] as const).map((value) => {
-              const cap = capacities.find((item) => item.time_slot === value);
-              const remaining = cap ? cap.capacity - cap.reserved_cups : null;
-              const disabled =
-                !isSlotStillOpen(value) ||
-                (remaining !== null && (remaining <= 0 || remaining < cartCupCount(lines)));
-              const isSelected = slot === value;
-              const window = value === "morning" ? "7:00 AM – 10:00 AM" : "12:00 PM – 1:30 PM";
-              return (
-                <label
-                  key={value}
-                  className={`card p-5 cursor-pointer transition-colors ${isSelected ? "bg-primary border-primary text-white" : ""} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <input
-                    className="sr-only"
-                    type="radio"
-                    value={value}
-                    disabled={disabled}
-                    {...form.register("timeSlot")}
-                  />
-                  <strong className="block capitalize">{value}</strong>
-                  <span className="block text-xs mt-1 text-[var(--color-muted)]">{window}</span>
-                  {!isSlotStillOpen(value) && (
-                    <span className="mt-2 block text-sm text-[var(--color-muted)]">
-                      Ordering cutoff has passed
-                    </span>
-                  )}
-                </label>
-              );
-            })}
-          </div>
-          {form.formState.errors.timeSlot && (
-            <small className="text-red-700">{form.formState.errors.timeSlot.message}</small>
-          )}
         </section>
         <section>
           <label>

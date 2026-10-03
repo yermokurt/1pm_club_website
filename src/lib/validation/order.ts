@@ -7,19 +7,18 @@ export const checkoutSchema = z
     orderMethod: z.enum(["pickup", "delivery"]),
     paymentMethod: z.enum(["cod", "qr"]),
     departmentName: z.string().trim().min(2).max(100).optional(),
-    fulfillmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    timeSlot: z.enum(["morning", "lunch"]),
     customerNote: z.string().trim().max(300).optional(),
     items: z
       .array(
         z.object({
           productId: z.string().uuid(),
           addonIds: z.array(z.string().uuid()).max(7),
-          quantity: z.number().int().min(1).max(15),
+          temperature: z.enum(["hot", "iced"]),
+          quantity: z.number().int().min(1).max(99),
         }),
       )
       .min(1)
-      .max(15),
+      .max(50),
   })
   .superRefine((value, ctx) => {
     if (value.orderMethod === "delivery" && !value.departmentName)

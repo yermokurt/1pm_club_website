@@ -27,9 +27,7 @@ export function OrderList({ orders }: { orders: OrderSummary[] }) {
           <div>
             <p className="font-bold">
               #{order.order_number}{" "}
-              <span className="ml-2 text-sm font-normal">
-                {order.fulfillment_date} · {order.time_slot}
-              </span>
+              <span className="ml-2 text-sm font-normal">{order.fulfillment_date}</span>
             </p>
             <div className="mt-2 space-y-1">
               <p className="text-sm">

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, Plus, X, Minus } from "lucide-react";
 import Image from "next/image";
-import type { Addon, Product } from "@/types/domain";
+import type { Addon, DrinkTemperature, Product } from "@/types/domain";
 import { formatPeso } from "@/lib/currency";
 import { useCartStore } from "@/stores/cart-store";
 
@@ -114,6 +114,9 @@ function ProductDialog({
 }) {
   const [chosen, setChosen] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [temperature, setTemperature] = useState<DrinkTemperature>(
+    product.is_iced_available !== false ? "iced" : "hot",
+  );
   const add = useCartStore((state) => state.add);
   useEffect(() => {
     const original = document.body.style.overflow;
@@ -123,6 +126,10 @@ function ProductDialog({
     };
   }, []);
   const active = addons.filter((addon) => addon.is_available);
+  const temperatures = [
+    ...(product.is_hot_available !== false ? [["hot", "Hot"] as const] : []),
+    ...(product.is_iced_available !== false ? [["iced", "Iced"] as const] : []),
+  ];
   const addOnTotal = active
     .filter((addon) => chosen.includes(addon.id))
     .reduce((sum, addon) => sum + addon.price_centavos, 0);
@@ -131,6 +138,7 @@ function ProductDialog({
       product,
       active.filter((addon) => chosen.includes(addon.id)),
       quantity,
+      temperature,
     );
     onClose();
   };
@@ -167,6 +175,27 @@ function ProductDialog({
           <p className="mt-4 text-sm text-[var(--color-muted)]">{product.description}</p>
         )}
         <fieldset className="mt-7">
+          <legend className="eyebrow mb-3">Serve it</legend>
+          <div className="grid grid-cols-2 gap-3">
+            {temperatures.map(([value, label]) => (
+              <label
+                key={value}
+                className={`card cursor-pointer p-4 text-center transition-colors ${temperature === value ? "border-primary bg-primary text-white" : ""}`}
+              >
+                <input
+                  className="sr-only"
+                  type="radio"
+                  name="temperature"
+                  value={value}
+                  checked={temperature === value}
+                  onChange={() => setTemperature(value)}
+                />
+                <strong>{label}</strong>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="mt-7">
           <legend className="eyebrow mb-3">Boost your drink</legend>
           {active.map((addon) => (
             <label
@@ -202,7 +231,7 @@ function ProductDialog({
             <span className="w-9 text-center font-bold">{quantity}</span>
             <button
               className="p-3"
-              onClick={() => setQuantity((value) => Math.min(15, value + 1))}
+              onClick={() => setQuantity((value) => Math.min(99, value + 1))}
               aria-label="Increase quantity"
             >
               <Plus size={16} />

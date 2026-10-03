@@ -1,5 +1,6 @@
 export type UserRole = "customer" | "admin";
 export type TimeSlot = "morning" | "lunch";
+export type DrinkTemperature = "hot" | "iced";
 export type OrderMethod = "pickup" | "delivery";
 export type PaymentStatus = "unpaid" | "paid";
 export type PaymentMethod = "cod" | "qr";
@@ -30,6 +31,8 @@ export interface Product {
   category?: Category | null;
   description?: string | null;
   image_url?: string | null;
+  is_hot_available: boolean;
+  is_iced_available: boolean;
 }
 export interface Addon {
   id: string;
@@ -55,10 +58,11 @@ export interface CartLine {
   lineId: string;
   product: Product;
   addons: Addon[];
+  temperature: DrinkTemperature;
   quantity: number;
 }
 export interface SlotCapacity {
-  time_slot: TimeSlot;
+  time_slot: TimeSlot | null;
   reserved_cups: number;
   capacity: number;
 }
@@ -86,6 +90,7 @@ export interface OrderDetail extends OrderSummary {
     unit_price_snapshot_centavos: number;
     quantity: number;
     subtotal_centavos: number;
+    temperature_snapshot: DrinkTemperature | null;
     order_item_addons: Array<{
       addon_name_snapshot: string;
       addon_price_snapshot_centavos: number;

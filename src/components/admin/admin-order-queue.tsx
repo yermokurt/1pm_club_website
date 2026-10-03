@@ -18,6 +18,7 @@ type AdminOrder = OrderSummary & {
   customer_note?: string | null;
   order_items?: Array<{
     product_name_snapshot: string;
+    temperature_snapshot?: "hot" | "iced" | null;
     quantity: number;
     subtotal_centavos: number;
     order_item_addons?: Array<{ addon_name_snapshot: string }>;
@@ -130,7 +131,7 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
           </select>
         </label>
         <label>
-          <span className="form-label">Fulfilment date</span>
+          <span className="form-label">Order date</span>
           <input
             className="field"
             type="date"
@@ -190,7 +191,7 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
               <div>
                 <strong>#{order.order_number}</strong>
                 <p className="text-sm mt-1">
-                  {order.customer_name_snapshot} · {order.fulfillment_date} · {order.time_slot}
+                  {order.customer_name_snapshot} · {order.fulfillment_date}
                 </p>
                 <div className="mt-2 flex gap-3">
                   <OrderStatusBadge status={order.order_status} />
@@ -200,7 +201,7 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
                   <p className="mt-3 text-sm text-[var(--color-muted)]">
                     {order.order_items
                       .flatMap((item) => [
-                        `${item.quantity}× ${item.product_name_snapshot}`,
+                        `${item.quantity}× ${item.product_name_snapshot}${item.temperature_snapshot ? ` (${item.temperature_snapshot})` : ""}`,
                         ...(item.order_item_addons ?? []).map(
                           (addon) => `+ ${addon.addon_name_snapshot}`,
                         ),
@@ -313,10 +314,7 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
                 <strong>Email:</strong> {selected.customer_email_snapshot || "—"}
               </p>
               <p>
-                <strong>Fulfilment:</strong> {selected.fulfillment_date}
-              </p>
-              <p>
-                <strong>Slot:</strong> {selected.time_slot}
+                <strong>Order date:</strong> {selected.fulfillment_date}
               </p>
               <p>
                 <strong>Method:</strong> {selected.order_method}
@@ -341,6 +339,11 @@ export function AdminOrderQueue({ orders }: { orders: AdminOrder[] }) {
                     <strong>
                       {item.quantity}× {item.product_name_snapshot}
                     </strong>
+                    {item.temperature_snapshot && (
+                      <p className="text-sm capitalize text-[var(--color-muted)]">
+                        {item.temperature_snapshot}
+                      </p>
+                    )}
                     {item.order_item_addons?.length ? (
                       <p className="text-sm text-[var(--color-muted)]">
                         +{" "}

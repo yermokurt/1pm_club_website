@@ -24,7 +24,7 @@ export default async function CheckoutPage() {
       <p className="eyebrow">Almost there</p>
       <h1 className="display text-6xl mt-2">Checkout</h1>
       <p className="mt-4 text-[var(--color-muted)]">
-        Choose a valid slot, scan the café QR and submit for approval.
+        Choose your order details, scan the café QR if needed, and submit for approval.
       </p>
       <div className="mt-9">
         {settings.accepting_orders ? (

@@ -47,6 +47,7 @@ export default async function OrderPage({
         unit_price_snapshot_centavos: number;
         quantity: number;
         subtotal_centavos: number;
+        temperature_snapshot: "hot" | "iced" | null;
         addons: Array<{
           addon_name_snapshot: string;
           addon_price_snapshot_centavos: number;
@@ -88,14 +89,10 @@ export default async function OrderPage({
           </div>
           <strong className="text-2xl">{formatPeso(order.total_centavos)}</strong>
         </div>
-        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-5 mt-8 pt-6 border-t border-[var(--color-border)] text-sm">
+        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-5 mt-8 pt-6 border-t border-[var(--color-border)] text-sm">
           <div>
-            <dt className="eyebrow">Fulfilment</dt>
+            <dt className="eyebrow">Order date</dt>
             <dd className="mt-2 font-bold">{order.fulfillment_date}</dd>
-          </div>
-          <div>
-            <dt className="eyebrow">Slot</dt>
-            <dd className="mt-2 font-bold capitalize">{order.time_slot}</dd>
           </div>
           <div>
             <dt className="eyebrow">Method</dt>
@@ -119,6 +116,11 @@ export default async function OrderPage({
                   <strong>
                     {item.quantity}× {item.product_name_snapshot}
                   </strong>
+                  {item.temperature_snapshot && (
+                    <p className="text-sm capitalize text-[var(--color-muted)]">
+                      {item.temperature_snapshot}
+                    </p>
+                  )}
                   {item.order_item_addons?.length ? (
                     <p className="text-sm text-[var(--color-muted)]">
                       +{" "}

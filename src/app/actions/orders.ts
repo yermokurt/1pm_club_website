@@ -6,7 +6,7 @@ import { sendFulfillmentEmail } from "@/lib/resend/fulfillment-email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { consumeRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import { getSettings } from "@/lib/data";
-import { dateIsBookable } from "@/lib/scheduling";
+import { manilaDate } from "@/lib/scheduling";
 
 export type OrderActionResult =
   { ok: true; orderNumber: number; guestToken?: string } | { ok: false; message: string };
@@ -16,8 +16,6 @@ async function submitOrderInternal(input: CheckoutInput): Promise<OrderActionRes
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Please check your order." };
   const settings = await getSettings();
   if (!settings.accepting_orders) return { ok: false, message: "Pre-orders are currently closed." };
-  if (!dateIsBookable(parsed.data.fulfillmentDate, settings))
-    return { ok: false, message: "That fulfilment date is not currently open for booking." };
   const supabase = await createClient();
   const {
     data: { user },
@@ -38,12 +36,13 @@ async function submitOrderInternal(input: CheckoutInput): Promise<OrderActionRes
     p_payment_method: parsed.data.paymentMethod,
     p_department_name:
       parsed.data.orderMethod === "delivery" ? parsed.data.departmentName?.trim() || null : null,
-    p_fulfillment_date: parsed.data.fulfillmentDate,
-    p_time_slot: parsed.data.timeSlot,
+    p_fulfillment_date: manilaDate(),
+    p_time_slot: null,
     p_customer_note: parsed.data.customerNote || null,
     p_items: parsed.data.items.map((item) => ({
       product_id: item.productId,
       addon_ids: item.addonIds,
+      temperature: item.temperature,
       quantity: item.quantity,
     })),
   });
@@ -52,16 +51,6 @@ async function submitOrderInternal(input: CheckoutInput): Promise<OrderActionRes
       ok: false,
       message:
         "Checkout needs the latest database migration. Run migrations 004 through 007 in Supabase, then try again.",
-    };
-  if (error?.message.includes("CAPACITY_FULL"))
-    return {
-      ok: false,
-      message: "This date has reached its cup limit. Please choose another available date.",
-    };
-  if (error?.message.includes("SCHEDULE") || error?.message.includes("SLOT_CLOSED"))
-    return {
-      ok: false,
-      message: "The selected ordering window is no longer available. Please choose another time.",
     };
   if (error?.message.includes("PRODUCT_UNAVAILABLE"))
     return {
@@ -78,11 +67,7 @@ async function submitOrderInternal(input: CheckoutInput): Promise<OrderActionRes
   if (error)
     return {
       ok: false,
-      message: error.message.includes("CAPACITY_FULL")
-        ? "That slot just became full. Please choose another available slot."
-        : error.message.includes("SCHEDULE")
-          ? "That fulfilment date or slot is no longer available."
-          : "We couldn’t submit this order. Please try again.",
+      message: "We couldn’t submit this order. Please try again.",
     };
   const rawResult = (Array.isArray(data) ? data[0] : data) as unknown as {
     order_number: number;
