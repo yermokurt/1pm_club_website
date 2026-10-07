@@ -26,6 +26,7 @@ export interface Product {
   name: string;
   price_centavos: number;
   is_available: boolean;
+  is_menu_visible: boolean;
   sort_order: number;
   category_id: string;
   category?: Category | null;

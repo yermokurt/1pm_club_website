@@ -10,6 +10,7 @@ type RecordItem = {
   id: string;
   name: string;
   is_available?: boolean;
+  is_menu_visible?: boolean;
   price_centavos?: number;
   description?: string | null;
   image_url?: string | null;
@@ -98,6 +99,7 @@ export function CatalogManager({
     const values: Record<string, unknown> = {
       name: draft.name.trim(),
       is_available: draft.is_available !== false,
+      ...(table === "products" ? { is_menu_visible: draft.is_menu_visible !== false } : {}),
       ...(priceable ? { price_centavos: draft.price_centavos ?? 0 } : {}),
       ...(table === "products"
         ? {
@@ -136,6 +138,7 @@ export function CatalogManager({
       values.description = String(formData.get("description") ?? "").trim() || null;
       values.is_hot_available = true;
       values.is_iced_available = true;
+      values.is_menu_visible = true;
     }
     const { data, error } = await createClient().from(table).insert(values).select().single();
     if (error || !data) {
@@ -280,7 +283,11 @@ export function CatalogManager({
                       : "text-[var(--color-success)]")
                   }
                 >
-                  {item.is_available === false ? "Hidden" : "Available"}
+                  {item.is_menu_visible === false
+                    ? "Hidden from menu"
+                    : item.is_available === false
+                      ? "Unavailable"
+                      : "Available"}
                 </span>
               </div>
             </div>
@@ -295,7 +302,11 @@ export function CatalogManager({
                   : "text-[var(--color-success)]")
               }
             >
-              {item.is_available === false ? "Hidden" : "Available"}
+              {item.is_menu_visible === false
+                ? "Hidden from menu"
+                : item.is_available === false
+                  ? "Unavailable"
+                  : "Available"}
             </span>
             <div className="absolute right-4 top-12 sm:static sm:block sm:text-right">
               <button
@@ -530,8 +541,19 @@ export function CatalogManager({
                 type="button"
                 onClick={() => updateDraft({ is_available: !(draft.is_available !== false) })}
               >
-                {draft.is_available === false ? "Make available" : "Hide item"}
+                {draft.is_available === false ? "Enable ordering" : "Disable ordering"}
               </button>
+              {table === "products" && (
+                <button
+                  className="btn secondary !min-h-9 !px-3"
+                  type="button"
+                  onClick={() =>
+                    updateDraft({ is_menu_visible: !(draft.is_menu_visible !== false) })
+                  }
+                >
+                  {draft.is_menu_visible === false ? "Show in menu" : "Hide from menu"}
+                </button>
+              )}
               <button className="btn" type="button" onClick={() => void saveEditor()}>
                 Save changes
               </button>

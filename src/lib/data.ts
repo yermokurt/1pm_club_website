@@ -20,6 +20,7 @@ export async function getMenu(): Promise<Product[]> {
   const { data } = await supabase
     .from("products")
     .select("*, category:categories(*)")
+    .eq("is_menu_visible", true)
     .order("sort_order");
   return (data ?? []) as unknown as Product[];
 }
